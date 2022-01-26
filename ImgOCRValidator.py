@@ -43,9 +43,9 @@ class ImgOCRValidator():
 		
 		if generate_html_report:
 			if use_legacy_html_report:
-				self.generate_legacy_report(json_report)
+				self.generate_legacy_report(self.results)
 			else:
-				self.generate_report(json_report)
+				self.generate_report(self.results)
 
 	def generate_report(self, results):
 		self.log(f"Saving html report ...")
@@ -234,7 +234,7 @@ class ImgOCRValidator():
 									# This word IS real, check if this word exists in the alt attribute
 									exists = False
 									for w in alt.split(" "):
-										if word.lower() in w.lower():
+										if word.lower() in w.lower() or w.lower().startswith(word):
 											exists = True
 
 									if not exists:
@@ -306,9 +306,11 @@ def parse_cli_args(args):
 	generate_html_report = False
 	only_generate_report = False
 	use_legacy_html_report = False
+	urls = []
 	
 	for arg in args:
 		if not arg.startswith("-"):
+			urls.append(arg)
 			break
 		else:
 			if arg == "-h" or arg == "--help" or arg == "-?":
@@ -325,8 +327,7 @@ def parse_cli_args(args):
 			if arg == "-k":
 				use_legacy_html_report = True
 			
-	
-	ImgOCRValidator(args, generate_html_report, only_generate_report, use_legacy_html_report)
+	ImgOCRValidator(urls, generate_html_report, only_generate_report, use_legacy_html_report)
 
 if __name__ == '__main__':
 	parse_cli_args(sys.argv)
