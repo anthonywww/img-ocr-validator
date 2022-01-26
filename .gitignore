@@ -1,0 +1,8 @@
+# Ignore reports
+report.json
+report.html
+reports/
+.config/
+.ash_history
+.python_history
+

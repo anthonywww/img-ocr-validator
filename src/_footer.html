@@ -1,0 +1,58 @@
+		</div>
+		<br>
+		<div id="bottom" class="container">
+			<div class="footer">
+				<p>Report navigation: <a href="#top"><i class="fa fa-arrow-up"></i> Top</a> / <a href="#bottom"><i class="fa fa-arrow-down"></i> Bottom</a> / <a href="#bottom"><i class="fa fa-hashtag"></i> Report Breakdown</a></p>
+				<p>This document was generated on {date_generated} using <a href="https://github.com/hashsploit/img-ocr-validator">img-ocr-validator</a>.</p>
+			</div>
+		</div>
+		<script defer>
+			document.addEventListener("DOMContentLoaded", function() {
+				
+				$("th").each(function() {
+				
+					// Make URL linkable
+					if ($(this).text() == "url") {
+						var elements = $(this).parent().find("td");
+						
+						elements.each(function() {
+							if ($(this).text().startsWith("http://") || $(this).text().startsWith("https://")) {
+								var link = $(this).text();
+								$(this).html("<a target=\"_blank\" href=\"" + link + "\">" + link + "</a>");
+							}
+						});
+					}
+					
+					// Make "issues" table red if it exists
+					if ($(this).text() == "issues") {
+						if ($(this).parent().find("td table") != null) {
+							$(this).parent().find("td table").addClass("red-border");
+						}
+					}
+					
+					// Change color of severity based on severity
+					if ($(this).text() == "severity") {
+						var elements = $(this).parent().parent().parent().parent().find("table.red-border tr td");
+						
+						elements.each(function() {
+							if ($(this).text() == "info") {
+								$(this).addClass("severity-info");
+							}
+							
+							if ($(this).text() == "warn") {
+								$(this).addClass("severity-warn");
+							}
+							
+							if ($(this).text() == "error") {
+								$(this).addClass("severity-error");
+							}
+						});
+						
+					}
+					
+				});
+			});
+		</script>
+	</body>
+</html>
+

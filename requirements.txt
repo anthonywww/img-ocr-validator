@@ -1,0 +1,7 @@
+requests
+beautifulsoup4
+image
+pytesseract
+pyenchant
+json2html
+
