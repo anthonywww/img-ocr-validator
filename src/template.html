@@ -28,6 +28,10 @@
 			.red-border {
 				border: 3px solid #FF0000;
 			}
+			.severity {
+				font-weight: bold;
+				text-transform: uppercase;
+			}
 			.severity-info {
 				background-color: #FFFF99;
 			}
@@ -36,6 +40,15 @@
 			}
 			.severity-error {
 				background-color: #FF9999;
+			}
+			.dark-mode .severity-info {
+				background-color: #959500;
+			}
+			.dark-mode .severity-warn {
+				background-color: #B74900;
+			}
+			.dark-mode .severity-error {
+				background-color: #880000;
 			}
 			#dark_mode {
 				position: fixed;
@@ -50,7 +63,16 @@
 			.dark-mode a:hover {
 				color: #FFFFFF;
 			}
-			
+			.preview-image {
+				max-width: 200px;
+				max-height: 200px;
+			}
+			.about-severity tr td {
+				width: inherit;
+				white-space: nowrap;
+				padding: 6px;
+				text-align: left;
+			}
 		</style>
 		<div class="container">
 			<div class="content">
@@ -63,15 +85,30 @@
 			<div class="content">
 				<p>This report has been generated using OCR (Optical Character Recognition) algorithms and basic HTML &lt;img&gt; element checks.</p>
 				<p>For a full breakdown of every URL tested along with the results, see the <a href="#report_breakdown">Report Breakdown</a> of <b>key-value</b> pairs denoting each portion of the test results.</p>
-				<p>Report navigation: <a href="#top"><i class="fa fa-arrow-up"></i> Top</a> / <a href="#bottom"><i class="fa fa-arrow-down"></i> Bottom</a> / <a href="#bottom"><i class="fa fa-hashtag"></i> Report Breakdown</a></p>
+				<p>Report navigation: <a href="#top"><i class="fa fa-arrow-up"></i> Top</a> / <a href="#bottom"><i class="fa fa-arrow-down"></i> Bottom</a> / <a href="#report_breakdown"><i class="fa fa-hashtag"></i> Report Breakdown</a></p>
 				
-				<br>
-				
+			</div>
+			
+			<h5 id="severity_legend" class="subtitle is-5"><a href="#severity_legend"><i class="fa fa-hashtag"></i></a> Severity Legend</h5>
+			
+			<table border="1" class="about-severity">
+				<tr><td class="severity severity-none">NONE</th> <td>The image is assumed to be OK.</td></tr>
+				<tr><td class="severity severity-info">INFO</td> <td>An informational issue that potentially should be looked into.</td></tr>
+				<tr><td class="severity severity-warn">WARN</td> <td>A medium-priority issue that should be looked into.</td></tr>
+				<tr><td class="severity severity-error">ERROR</td> <td>A high-priority issue that should be looked into.</td></tr>
+			</table>
+			<br>
+			
+			<h5 id="report_breakdown" class="subtitle is-5"><a href="#report_breakdown"><i class="fa fa-hashtag"></i></a> Report Breakdown</h5>
+			
+			<br>
+			
+			<div class="content">
 				<p>
 					<i class="fa fa-refresh fa-spin"></i> Loading ...
 				</p>
-				
 			</div>
+			
 			<br>
 			<h5 id="report_breakdown" class="subtitle is-5"><a href="#report_breakdown"><i class="fa fa-hashtag"></i></a> Report Breakdown</h5>
 			<div id="report_breakdown_data"></div>
@@ -86,7 +123,7 @@
 		<div id="dark_mode"><i class="fa fa-moon"></i></div>
 		<script defer>
 			const data = {json_data};
-			var dark_mode = false
+			var dark_mode = false;
 			document.addEventListener("DOMContentLoaded", function() {
 			
 				$("#dark_mode").click(function() {

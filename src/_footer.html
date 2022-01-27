@@ -2,12 +2,39 @@
 		<br>
 		<div id="bottom" class="container">
 			<div class="footer">
-				<p>Report navigation: <a href="#top"><i class="fa fa-arrow-up"></i> Top</a> / <a href="#bottom"><i class="fa fa-arrow-down"></i> Bottom</a> / <a href="#bottom"><i class="fa fa-hashtag"></i> Report Breakdown</a></p>
+				<p>Report navigation: <a href="#top"><i class="fa fa-arrow-up"></i> Top</a> / <a href="#bottom"><i class="fa fa-arrow-down"></i> Bottom</a> / <a href="#report_breakdown"><i class="fa fa-hashtag"></i> Report Breakdown</a></p>
 				<p>This document was generated on {date_generated} using <a href="https://github.com/hashsploit/img-ocr-validator">img-ocr-validator</a>.</p>
 			</div>
 		</div>
+		<div id="dark_mode"><i class="fa fa-moon"></i></div>
 		<script defer>
+			
+			var dark_mode = false;
+			
 			document.addEventListener("DOMContentLoaded", function() {
+			
+				$("#dark_mode").click(function() {
+					dark_mode = !dark_mode;
+					if (dark_mode) {
+						$("html").addClass("dark-mode");
+						$("body").addClass("dark-mode");
+						$("h1,h2,h3,h4,h5,h6").addClass("dark-mode");
+						$(".footer").addClass("dark-mode");
+						$("th,tr").addClass("dark-mode");
+						
+						$("#dark_mode").children().addClass("fa-sun");
+						$("#dark_mode").children().removeClass("fa-moon");
+					} else {
+						$("html").removeClass("dark-mode");
+						$("body").removeClass("dark-mode");
+						$("h1,h2,h3,h4,h5,h6").removeClass("dark-mode");
+						$(".footer").removeClass("dark-mode");
+						$("th,tr").removeClass("dark-mode");
+						
+						$("#dark_mode").children().addClass("fa-moon");
+						$("#dark_mode").children().removeClass("fa-sun");
+					}
+				});
 				
 				$("th").each(function() {
 				
@@ -18,7 +45,7 @@
 						elements.each(function() {
 							if ($(this).text().startsWith("http://") || $(this).text().startsWith("https://")) {
 								var link = $(this).text();
-								$(this).html("<a target=\"_blank\" href=\"" + link + "\">" + link + "</a>");
+								$(this).html("<a target=\"_blank\" href=\"" + link + "\">" + link + "<br><img src='" + link + "' class='preview-image' />" + "</a>");
 							}
 						});
 					}
@@ -36,14 +63,17 @@
 						
 						elements.each(function() {
 							if ($(this).text() == "info") {
+								$(this).addClass("severity");
 								$(this).addClass("severity-info");
 							}
 							
 							if ($(this).text() == "warn") {
+								$(this).addClass("severity");
 								$(this).addClass("severity-warn");
 							}
 							
 							if ($(this).text() == "error") {
+								$(this).addClass("severity");
 								$(this).addClass("severity-error");
 							}
 						});
