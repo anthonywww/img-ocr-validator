@@ -72,10 +72,12 @@ class ImgOCRValidator():
 		try:
 			fp = open("src/_header.html", 'r')
 			header = fp.read()
+			header = header.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 			fp.close()
 			
 			fp = open("src/_footer.html", 'r')
 			footer = fp.read()
+			footer = footer.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 			fp.close()
 			
 			fp = open("report.html", 'w')
