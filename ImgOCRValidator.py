@@ -220,8 +220,8 @@ class ImgOCRValidator():
 										if "x" in query_value:
 											query_width = query_value.split("x")[0]
 											query_height = query_value.split("x")[1]
-											if not img.width == query_width or not img.height == query_height:
-												self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Image with query parameters does not match size requested. Expected {query_width}x{query_height} but instead got {img.width}x{img.height}"))
+											if not int(img.width) == int(query_width) or not int(img.height) == int(query_height):
+												self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Image with query parameters does not match size requested. Expected {query_width}x{query_height} but instead got {img.width}x{img.height}."))
 							
 							# Analyze using OCR
 							img_text_array = pytesseract.image_to_string(img).strip().split()
