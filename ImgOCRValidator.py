@@ -209,7 +209,7 @@ class ImgOCRValidator():
 							self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Invalid headers 'content-type': {content_type}."))
 						
 						# Ensure content-length is not null
-						if not response.headers['content-length']:
+						if not 'content-length' in response.headers:
 							self.log(f"[{url}] - Invalid content-length for {src}")
 							self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Null header 'content-length'."))
 						else:
