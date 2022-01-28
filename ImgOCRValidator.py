@@ -73,12 +73,10 @@ class ImgOCRValidator():
 		try:
 			fp = open("src/_header.html", 'r')
 			header = fp.read()
-			header = header.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 			fp.close()
 			
 			fp = open("src/_footer.html", 'r')
 			footer = fp.read()
-			footer = footer.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 			fp.close()
 			
 			# Create reports/ directory
@@ -87,6 +85,33 @@ class ImgOCRValidator():
 			
 			for result in results:
 				report = json2html.json2html.convert(json=results[result]["images"])
+				
+				image_count_no_issues = 0
+				image_count_info_issues = 0
+				image_count_warn_issues = 0
+				image_count_error_issues = 0
+				
+				for img in results[result]["images"]:
+					if len(img["issues"]) == 0:
+						image_count_no_issues = image_count_no_issues + 1
+					else:
+						for issues in img["issues"]:
+							if issues["severity"] == "info":
+								image_count_info_issues = image_count_info_issues + 1
+							elif issues["severity"] == "warn":
+								image_count_warn_issues = image_count_warn_issues + 1
+							elif issues["severity"] == "error":
+								image_count_error_issues = image_count_error_issues + 1
+				
+				# Replace template holders
+				header = header.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
+				footer = footer.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
+				
+				header = header.replace("{total_images}", str(len(results[result]["images"])))
+				header = header.replace("{severity_none}", str(image_count_no_issues))
+				header = header.replace("{severity_info}", str(image_count_info_issues))
+				header = header.replace("{severity_warn}", str(image_count_warn_issues))
+				header = header.replace("{severity_error}", str(image_count_error_issues))
 				
 				if report.endswith("/"):
 					report = report[:-1]
