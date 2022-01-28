@@ -171,6 +171,12 @@ class ImgOCRValidator():
 						purl = urlparse(url)
 						src = purl.scheme + "://" + purl.netloc + src
 					
+					# Check if url has trailing whitespace
+					if src.endswith(" ") or src.endswith("%20"):
+						self.log(f"[{url}] - Url ends with a space {src}")
+						self.results[url]["images"][index]["issues"].append(dict(severity="warn", text="This image URL ends with a trailing space."))
+						src = src.strip()
+					
 					# Check if the <img src=""> contains a valid URL
 					if not self.uri_validator(src):
 						self.log(f"[{url}] - Invalid URL for {src}")
