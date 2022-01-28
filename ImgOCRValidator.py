@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import sys
 import json
 import time
@@ -66,7 +67,7 @@ class ImgOCRValidator():
 
 	def generate_legacy_report(self, results):
 		import json2html
-		report = json2html.json2html.convert(json=results)
+		
 		self.log(f"Saving legacy html report ...")
 		
 		try:
@@ -80,11 +81,26 @@ class ImgOCRValidator():
 			footer = footer.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 			fp.close()
 			
-			fp = open("report.html", 'w')
-			fp.write(header)
-			fp.write(report)
-			fp.write(footer)
-			fp.close()
+			# Create reports/ directory
+			if not os.path.isdir("reports"):
+				os.mkdir("reports")
+			
+			for result in results:
+				report = json2html.json2html.convert(json=results[result]["images"])
+				
+				if report.endswith("/"):
+					report = report[:-1]
+				
+				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_")
+				report_name = re.sub(r"[^a-zA-Z0-9-_. ]", "", report_name)
+				
+				fp = open(f"reports/{report_name}.html", 'w')
+				fp.write(header)
+				fp.write(report)
+				fp.write(footer)
+				fp.close()
+				
+				
 		except Exception as err:
 			self.log(f"Error while trying to read legacy template html files: {err}")
 
@@ -313,7 +329,6 @@ def parse_cli_args(args):
 	for arg in args:
 		if not arg.startswith("-"):
 			urls.append(arg)
-			break
 		else:
 			if arg == "-h" or arg == "--help" or arg == "-?":
 				print(f"Usage: {binary} [args] <URLS>")
