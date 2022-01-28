@@ -208,57 +208,63 @@ class ImgOCRValidator():
 							self.log(f"[{url}] - Invalid content-type {content_type} for {src}")
 							self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Invalid headers 'content-type': {content_type}."))
 						
-						# Do binary file checks
-						if rasterized_image:
-							buffer = tempfile.SpooledTemporaryFile(max_size=8e9)
-							downloaded = 0
-							filesize = int(response.headers['content-length'])
-							
-							for chunk in response.iter_content(chunk_size=1024):
-								downloaded += len(chunk)
-								buffer.write(chunk)
-								#print(downloaded/filesize)
-							
-							buffer.seek(0)
-							img = Image.open(io.BytesIO(buffer.read()))
-							buffer.close()
-							
-							self.results[url]["images"][index]["width"] = img.width
-							self.results[url]["images"][index]["height"] = img.height
-							
-							# Verify width/height if provided in the query params (size/dimensions) ?size=100x100
-							if "?" in src:
-								size_params = ["size", "dimensions", "dimension", "dim"]
-								for size_param in size_params:
-									query_param = src.split("?")[1]
-									if query_param.startswith(size_param):
-										query_value = query_param.split("=")[1]
-										if "x" in query_value:
-											query_width = query_value.split("x")[0]
-											query_height = query_value.split("x")[1]
-											if not int(img.width) == int(query_width) or not int(img.height) == int(query_height):
-												self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Image with query parameters does not match size requested. Expected {query_width}x{query_height} but instead got {img.width}x{img.height}."))
-							
-							# Analyze using OCR
-							img_text_array = pytesseract.image_to_string(img).strip().split()
-							
-							# Check if the words from the OCR image are real
-							d = enchant.Dict("en_US")
-							
-							cleaned_text = []
-							for word in img_text_array:
-								if d.check(word):
-									cleaned_text.append(word)
-									# This word IS real, check if this word exists in the alt attribute
-									exists = False
-									for w in alt.split(" "):
-										if word.lower() in w.lower() or w.lower().startswith(word):
-											exists = True
+						# Ensure content-length is not null
+						if not response.headers['content-length']:
+							self.log(f"[{url}] - Invalid content-length for {src}")
+							self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Null header 'content-length'."))
+						else:
+							# Do binary file checks
+							if rasterized_image:
+								buffer = tempfile.SpooledTemporaryFile(max_size=8e9)
+								downloaded = 0
+								
+								filesize = int(response.headers['content-length'])
+								
+								for chunk in response.iter_content(chunk_size=1024):
+									downloaded += len(chunk)
+									buffer.write(chunk)
+									#print(downloaded/filesize)
+								
+								buffer.seek(0)
+								img = Image.open(io.BytesIO(buffer.read()))
+								buffer.close()
+								
+								self.results[url]["images"][index]["width"] = img.width
+								self.results[url]["images"][index]["height"] = img.height
+								
+								# Verify width/height if provided in the query params (size/dimensions) ?size=100x100
+								if "?" in src:
+									size_params = ["size", "dimensions", "dimension", "dim"]
+									for size_param in size_params:
+										query_param = src.split("?")[1]
+										if query_param.startswith(size_param):
+											query_value = query_param.split("=")[1]
+											if "x" in query_value:
+												query_width = query_value.split("x")[0]
+												query_height = query_value.split("x")[1]
+												if not int(img.width) == int(query_width) or not int(img.height) == int(query_height):
+													self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Image with query parameters does not match size requested. Expected {query_width}x{query_height} but instead got {img.width}x{img.height}."))
+								
+								# Analyze using OCR
+								img_text_array = pytesseract.image_to_string(img).strip().split()
+								
+								# Check if the words from the OCR image are real
+								d = enchant.Dict("en_US")
+								
+								cleaned_text = []
+								for word in img_text_array:
+									if d.check(word):
+										cleaned_text.append(word)
+										# This word IS real, check if this word exists in the alt attribute
+										exists = False
+										for w in alt.split(" "):
+											if word.lower() in w.lower() or w.lower().startswith(word):
+												exists = True
 
-									if not exists:
-										self.results[url]["images"][index]["issues"].append(dict(severity="info", text=f"Word '{word.lower()}' does not exist in the alt attribute."))
+										if not exists:
+											self.results[url]["images"][index]["issues"].append(dict(severity="info", text=f"Word '{word.lower()}' does not exist in the alt attribute."))
 
-							self.results[url]["images"][index]["analyzed_text"] = ' '.join(cleaned_text)
+								self.results[url]["images"][index]["analyzed_text"] = ' '.join(cleaned_text)
 						
 					except HTTPError as http_err:
 						self.log(f"[{url}] - HTTP Error: {http_err} for {src}")
