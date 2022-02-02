@@ -2,6 +2,7 @@ requests
 beautifulsoup4
 image
 pytesseract
+argparse
 pyenchant
 json2html
 
