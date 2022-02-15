@@ -308,9 +308,10 @@ class ImgOCRValidator():
 										cleaned_text.append(word)
 										# This word IS real, check if this word exists in the alt attribute
 										exists = False
-										for w in alt.split(" "):
-											if word.lower() in w.lower() or w.lower().startswith(word):
-												exists = True
+										if not alt == None:
+											for w in alt.split(" "):
+												if word.lower() in w.lower() or w.lower().startswith(word):
+													exists = True
 
 										if not exists:
 											self.results[url]["images"][index]["issues"].append(dict(severity="info", text=f"Word '{word.lower()}' does not exist in the alt attribute."))
