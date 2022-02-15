@@ -384,7 +384,6 @@ def parse_cli_args():
 	parser.add_argument("-k", "--legacy-report", action="store_true", help="Use the legacy HTML reporter.")
 	parser.add_argument("-s", "--severity", type=str, help="Only include <SEVERITY> or greater in the report. (Valid severities: INFO, WARN, ERROR)")
 	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors.")
-	parser.add_argument("--no-header-footer", action="store_true", help="Do not add a header/footer to each report generated.")
 	
 	args = parser.parse_args()
 	
@@ -393,7 +392,6 @@ def parse_cli_args():
 	legacy_report = args.legacy_report or False
 	severity = args.severity or False
 	exclude = args.exclude or False
-	no_header_footer = args.no_header_footer or False
 	
 	if not severity == False and (not severity == "INFO" or not severity == "WARN" or not severity == "ERROR"):
 		print("Error: Severity must be INFO, WARN, or ERROR.")
@@ -405,7 +403,6 @@ def parse_cli_args():
 	options["legacy_report"] = legacy_report
 	options["severity"] = severity
 	options["exclude"] = exclude
-	options["no_header_footer"] = no_header_footer
 	
 	ImgOCRValidator(args.urls, options)
 
