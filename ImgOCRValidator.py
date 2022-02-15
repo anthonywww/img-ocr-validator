@@ -55,14 +55,30 @@ class ImgOCRValidator():
 		
 		try:
 			fp = open("src/template.html", 'r')
-			template = fp.read()
-			template = template.replace("{json_data}", json.dumps(results, indent=None, separators=(",", ":")))
-			template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
+			original_template = fp.read()
 			fp.close()
 			
-			fp = open("report.html", 'w')
-			fp.write(template)
-			fp.close()
+			# Create reports/ directory
+			if not os.path.isdir("reports"):
+				os.mkdir("reports")
+			
+			for result in results:
+				
+				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_").replace("+", "_")
+				report_name = re.sub(r"[^a-zA-Z0-9-_. ]", "", report_name)
+				
+				if report_name.endswith("_"):
+					report_name = report_name[:-1]
+				
+				template = original_template
+				template = template.replace("{json_data}", json.dumps(results[result]["images"], indent=None, separators=(",", ":")))
+				template = template.replace("{json_data_pretty}", json.dumps(results[result]["images"], indent=4))
+				template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
+				
+				fp = open(f"reports/{report_name}.html", 'w')
+				fp.write(template)
+				fp.close()
+			
 		except Exception as err:
 			self.log(f"Error while trying to read template html file: {err}")
 		
@@ -74,11 +90,11 @@ class ImgOCRValidator():
 		
 		try:
 			fp = open("src/_header.html", 'r')
-			header = fp.read()
+			original_header = fp.read()
 			fp.close()
 			
 			fp = open("src/_footer.html", 'r')
-			footer = fp.read()
+			original_footer = fp.read()
 			fp.close()
 			
 			# Create reports/ directory
@@ -106,6 +122,9 @@ class ImgOCRValidator():
 								image_count_error_issues = image_count_error_issues + 1
 				
 				# Replace template holders
+				header = original_header
+				footer = original_footer
+				
 				header = header.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 				footer = footer.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 				
@@ -118,7 +137,7 @@ class ImgOCRValidator():
 				if report.endswith("/"):
 					report = report[:-1]
 				
-				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_")
+				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_").replace("+", "_")
 				report_name = re.sub(r"[^a-zA-Z0-9-_. ]", "", report_name)
 				
 				fp = open(f"reports/{report_name}.html", 'w')
@@ -126,7 +145,6 @@ class ImgOCRValidator():
 				fp.write(report)
 				fp.write(footer)
 				fp.close()
-				
 				
 		except Exception as err:
 			self.log(f"Error while trying to read legacy template html files: {err}")
@@ -360,12 +378,13 @@ class ImgOCRValidator():
 def parse_cli_args():
 	parser = argparse.ArgumentParser(prog="img-ocr-validator", description="Launch flags for img-ocr-validator.", exit_on_error=True)
 	
-	parser.add_argument("urls", metavar="URL", type=str, nargs="+", help="URLs to analyze.")
+	parser.add_argument("urls", metavar="URL", type=str, nargs="*", help="URLs to analyze.")
 	parser.add_argument("-g", "--generate-report", action="store_true", help="Generate HTML reports.")
 	parser.add_argument("-p", "--parse-only", action="store_true", help="Generate HTML reports from existing report.json.")
 	parser.add_argument("-k", "--legacy-report", action="store_true", help="Use the legacy HTML reporter.")
 	parser.add_argument("-s", "--severity", type=str, help="Only include <SEVERITY> or greater in the report. (Valid severities: INFO, WARN, ERROR)")
-	parser.add_argument("-e", "--exclude", type=str, help="Exclude the presented css selectors.")
+	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors.")
+	parser.add_argument("--no-header-footer", action="store_true", help="Do not add a header/footer to each report generated.")
 	
 	args = parser.parse_args()
 	
@@ -374,6 +393,7 @@ def parse_cli_args():
 	legacy_report = args.legacy_report or False
 	severity = args.severity or False
 	exclude = args.exclude or False
+	no_header_footer = args.no_header_footer or False
 	
 	if not severity == False and (not severity == "INFO" or not severity == "WARN" or not severity == "ERROR"):
 		print("Error: Severity must be INFO, WARN, or ERROR.")
@@ -385,10 +405,9 @@ def parse_cli_args():
 	options["legacy_report"] = legacy_report
 	options["severity"] = severity
 	options["exclude"] = exclude
+	options["no_header_footer"] = no_header_footer
 	
 	ImgOCRValidator(args.urls, options)
-
-
 
 if __name__ == '__main__':
 	parse_cli_args()

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-URLS="${URLS}"
+ARGS="${ARGS}"
 
 if [ "$#" -gt 0 ]; then
-	URLS="$@"
+	ARGS="$@"
 fi
 
 # Check if python3 is installed
@@ -12,5 +12,5 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-python3 ImgOCRValidator.py ${URLS}
+python3 ImgOCRValidator.py ${ARGS}
 

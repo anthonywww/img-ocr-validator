@@ -22,9 +22,21 @@ docker run --rm -it --user $(id -u):$(id -g) -v "$(pwd):/root/" -e URLS="https:/
 
 ### Options
 ```
-Usage: ImgOCRValidator.py [args] <URLS>
- -h, -?, --help ....... Show all args.
- -g ................... Generate HTML report.
- -p ................... Generate HTML report from existing report.json.
- -k ................... Use the legacy HTML reporter.
+usage: img-ocr-validator [-h] [-g] [-p] [-k] [-s SEVERITY] [-e EXCLUDE] [URL ...]
+
+Launch flags for img-ocr-validator.
+
+positional arguments:
+  URL                   URLs to analyze.
+
+options:
+  -h, --help            show this help message and exit
+  -g, --generate-report
+                        Generate HTML reports.
+  -p, --parse-only      Generate HTML reports from existing report.json.
+  -k, --legacy-report   Use the legacy HTML reporter.
+  -s SEVERITY, --severity SEVERITY
+                        Only include <SEVERITY> or greater in the report. (Valid severities: INFO, WARN, ERROR)
+  -e EXCLUDE, --exclude EXCLUDE
+                        Exclude the presented css selectors.
 ```
