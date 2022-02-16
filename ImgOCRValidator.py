@@ -42,7 +42,7 @@ class ImgOCRValidator():
 			raise Exception("No URLs provided")
 		
 		self.results = {}
-		self.parse(urls)
+		self.parse(urls, options)
 		
 		if options["generate_report"]:
 			if options["legacy_report"]:
@@ -150,7 +150,7 @@ class ImgOCRValidator():
 			self.log(f"Error while trying to read legacy template html files: {err}")
 
 
-	def parse(self, urls: str):
+	def parse(self, urls: str, options: dict):
 		# Print URLs provided
 		self.log("URLS = %s" %(urls))
 		
@@ -177,6 +177,23 @@ class ImgOCRValidator():
 				end_time = time.process_time()
 				parse_time = end_time - start_time
 				self.results[url]["metrics"]["parse_time"] = parse_time
+				
+				# Filter out exclusion rules
+				if options["exclude"]:
+					
+					if options["exclude"].startswith("'") and options["exclude"].endswith("'"):
+						options["exclude"] = options["exclude"][1:-1]
+					if options["exclude"].startswith("\"") and options["exclude"].endswith("\""):
+						options["exclude"] = options["exclude"][1:-1]
+					
+					excluded_selectors = options["exclude"].split(",")
+					
+					for excluded_selector in excluded_selectors:
+						excluded_selector = excluded_selector.strip()
+						if not excluded_selector == None and len(excluded_selector) > 0:
+							self.log(f"[{url}] Running exclusion rule for '{excluded_selector}' ...")
+							for found in soup.select(excluded_selector):
+								found.decompose()
 				
 				# Search HTML for <img> tags
 				img_tags = soup.find_all('img')
@@ -384,7 +401,7 @@ def parse_cli_args():
 	parser.add_argument("-p", "--parse-only", action="store_true", help="Generate HTML reports from existing report.json.")
 	parser.add_argument("-k", "--legacy-report", action="store_true", help="Use the legacy HTML reporter.")
 	parser.add_argument("-s", "--severity", type=str, help="Only include <SEVERITY> or greater in the report. (Valid severities: INFO, WARN, ERROR)")
-	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors.")
+	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors. (Separated by , (commas))")
 	
 	args = parser.parse_args()
 	
