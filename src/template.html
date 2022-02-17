@@ -88,39 +88,44 @@
 				<p>This report has been generated on <time datetime="{date_generated}">{date_generated}</time> using OCR (Optical Character Recognition) algorithms and basic HTML &lt;img&gt; element checks.</p>
 				<p>For a full breakdown of every URL tested along with the results, see the <a href="#report_breakdown">Report Breakdown</a> of <b>key-value</b> pairs denoting each portion of the test results.</p>
 			</div>
-			
-			<h5 id="filter_report_by" class="subtitle is-5"><a href="#filter_report_by"><i class="fa fa-hashtag"></i></a> Filter Report By</h5>
-			<div class="columns">
-				<div class="column">
-					test
+
+			<div>			
+				<h5 id="filter_report_by" class="subtitle is-5"><a href="#filter_report_by"><i class="fa fa-hashtag"></i></a> Filter Report By</h5>
+				<div class="columns">
+					<div class="column">
+						test
+					</div>
+					<div class="column">
+						<table border="1" class="about-severity">
+							<tr><td class="severity severity-none">NONE</th> <td>The image is assumed to be OK.</td></tr>
+							<tr><td class="severity severity-info">INFO</td> <td>An informational issue that potentially should be looked into.</td></tr>
+							<tr><td class="severity severity-warn">WARN</td> <td>A medium-priority issue that should be looked into.</td></tr>
+							<tr><td class="severity severity-error">ERROR</td> <td>A high-priority issue that should be looked into.</td></tr>
+						</table>					
+					</div>
 				</div>
-				<div class="column">
-					<table border="1" class="about-severity">
-						<tr><td class="severity severity-none">NONE</th> <td>The image is assumed to be OK.</td></tr>
-						<tr><td class="severity severity-info">INFO</td> <td>An informational issue that potentially should be looked into.</td></tr>
-						<tr><td class="severity severity-warn">WARN</td> <td>A medium-priority issue that should be looked into.</td></tr>
-						<tr><td class="severity severity-error">ERROR</td> <td>A high-priority issue that should be looked into.</td></tr>
-					</table>					
+			</div>
+			
+			<br>
+			
+			<div>
+				<h5 id="report_breakdown" class="subtitle is-5"><a href="#report_breakdown"><i class="fa fa-hashtag"></i></a> Report Breakdown</h5>
+				<br>
+				<div id="report_breakdown_data" class="content">
+					<p>
+						<i class="fa fa-refresh fa-spin"></i> Loading ...
+					</p>
 				</div>
 			</div>
+			
 			<br>
 			
-			
-			<h5 id="report_breakdown" class="subtitle is-5"><a href="#report_breakdown"><i class="fa fa-hashtag"></i></a> Report Breakdown</h5>
-			<br>
-			<div id="report_breakdown_data" class="content">
-				<p>
-					<i class="fa fa-refresh fa-spin"></i> Loading ...
-				</p>
+			<div style="display:none;">
+				<h5 id="json_data" class="subtitle is-5"><a href="#json_data"><i class="fa fa-hashtag"></i></a> JSON Data</h5>
+				<div id="raw_json_data">
+					<pre><code class="language-json">{json_data}</code></pre>
+				</div>
 			</div>
-			<br>
-			
-			
-			<h5 id="json_data" class="subtitle is-5"><a href="#json_data"><i class="fa fa-hashtag"></i></a> JSON Data</h5>
-			<div id="raw_json_data">
-				<pre><code class="language-json">{json_data_pretty}</code></pre>
-			</div>
-			
 			
 		</div>
 		<br>
@@ -139,9 +144,6 @@
 				<a href="#json_data"><i class="fa fa-wrench"></i> JSON</a>
 			</p>
 		</div>
-		<script async>
-			const report_data = {json_data};
-		</script>
 	</body>
 </html>
 

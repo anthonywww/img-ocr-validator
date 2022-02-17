@@ -10,9 +10,12 @@ import enchant
 import argparse
 import tempfile
 import pytesseract
+from urllib.error import *
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from PIL import Image
+
+from severity import Severity
 
 class ImgOCRValidator():
 
@@ -211,7 +214,6 @@ class ImgOCRValidator():
 					if not img_tag.has_attr("alt"):
 						img_tag["alt"] = None
 					
-					path = self.get_css_path(img_tag)
 					src = img_tag["src"]
 					alt = img_tag["alt"]
 					
@@ -219,7 +221,6 @@ class ImgOCRValidator():
 					self.results[url]["images"].append({})
 					self.results[url]["images"][index]["url"] = src
 					self.results[url]["images"][index]["alt"] = alt
-					self.results[url]["images"][index]["path"] = path
 					self.results[url]["images"][index]["issues"] = []
 					
 					# If the image is Base64 encoded just ignore it for now
@@ -230,8 +231,12 @@ class ImgOCRValidator():
 					
 					# Check if url has a protocol
 					if not src.startswith("http://") and not src.startswith("https://"):
-						purl = urlparse(url)
-						src = purl.scheme + "://" + purl.netloc + src
+						if src.startswith("//"):
+							purl = urlparse(url)
+							src = purl.scheme + ":" + src
+						else:
+							purl = urlparse(url)
+							src = purl.scheme + "://" + purl.netloc + src
 					
 					# Check if url has trailing whitespace
 					if src.endswith(" ") or src.endswith("%20"):
@@ -248,6 +253,9 @@ class ImgOCRValidator():
 					if not alt or len(alt.strip()) == 0:
 						self.log(f"[{url}] - Empty alt attribute for {src}")
 						self.results[url]["images"][index]["issues"].append(dict(severity="warn", text="Alt attribute is empty."))
+
+					# Set the URL again after filtering
+					self.results[url]["images"][index]["url"] = src
 
 					# Check if the image returns a valid HTTP status code
 					self.log(f"[{url}] - Validating source {src} ...")
@@ -358,25 +366,6 @@ class ImgOCRValidator():
 		fp = open("report.json", 'w')
 		fp.write(json.dumps(self.results, indent = 4))
 		fp.close()
-		
-
-	# https://stackoverflow.com/questions/25969474/beautifulsoup-extract-xpath-or-css-path-of-node
-	def get_element(self, node):
-		# for XPATH we have to count only for nodes with same type!
-		length = len(list(node.previous_siblings)) + 1
-		if (length) > 1:
-			return '%s:nth-child(%s)' % (node.name, length)
-		else:
-			return node.name
-
-	# https://stackoverflow.com/questions/25969474/beautifulsoup-extract-xpath-or-css-path-of-node
-	def get_css_path(self, node):
-		path = [self.get_element(node)]
-		for parent in node.parents:
-			if parent.name == 'body':
-				break
-			path.insert(0, self.get_element(parent))
-		return ' > '.join(path)
 
 	# Print to console
 	def log(self, *msg):
@@ -396,11 +385,18 @@ class ImgOCRValidator():
 def parse_cli_args():
 	parser = argparse.ArgumentParser(prog="img-ocr-validator", description="Launch flags for img-ocr-validator.", exit_on_error=True)
 	
+	severities = []
+	
+	for s in Severity:
+		severities.append(s.name)
+	
+	severities_string = ', '.join(map(str, severities))
+	
 	parser.add_argument("urls", metavar="URL", type=str, nargs="*", help="URLs to analyze.")
 	parser.add_argument("-g", "--generate-report", action="store_true", help="Generate HTML reports.")
 	parser.add_argument("-p", "--parse-only", action="store_true", help="Generate HTML reports from existing report.json.")
 	parser.add_argument("-k", "--legacy-report", action="store_true", help="Use the legacy HTML reporter.")
-	parser.add_argument("-s", "--severity", type=str, help="Only include <SEVERITY> or greater in the report. (Valid severities: INFO, WARN, ERROR)")
+	parser.add_argument("-s", "--severity", type=str, help=f"Only include <SEVERITY> or greater in the report. (Valid severities: {severities_string})")
 	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors. (Separated by , (commas))")
 	
 	args = parser.parse_args()
@@ -411,9 +407,13 @@ def parse_cli_args():
 	severity = args.severity or False
 	exclude = args.exclude or False
 	
-	if not severity == False and (not severity == "INFO" or not severity == "WARN" or not severity == "ERROR"):
-		print("Error: Severity must be INFO, WARN, or ERROR.")
+	if not severity == False and (not severity == "NONE" and not severity == "INFO" and not severity == "WARN" and not severity == "ERROR"):
+		print(f"Error: Severity must be {severities_string}")
 		return 100
+	
+	for s in Severity:
+		if s.name == severity:
+			severity = s
 	
 	options = {}
 	options["generate_report"] = generate_report

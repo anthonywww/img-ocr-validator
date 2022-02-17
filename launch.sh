@@ -12,5 +12,5 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-python3 ImgOCRValidator.py ${ARGS}
+python3 src/imgocrvalidator.py ${ARGS}
 
