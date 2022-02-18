@@ -1,16 +1,17 @@
 
 // Default value for dark-mode
 var dark_mode = false;
-var json_report = null;
+const full_report = {json_data};
+var json_report = full_report;
 
 String.prototype.hashCode = function() {
-    var hash = 0;
-    for (var i = 0; i < this.length; i++) {
-        var char = this.charCodeAt(i);
-        hash = ((hash<<5)-hash)+char;
-        hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash;
+	var hash = 0;
+	for (var i = 0; i < this.length; i++) {
+		var char = this.charCodeAt(i);
+		hash = ((hash<<5)-hash)+char;
+		hash = hash & hash; // Convert to 32-bit integer
+	}
+	return hash;
 }
 
 const severities = {
@@ -26,6 +27,7 @@ function renderReport(data) {
 	$container.html("");
 
 	for (var i in data) {
+	
 		// Mandatory
 		var object = data[i];
 		var url = object["url"];
@@ -41,10 +43,6 @@ function renderReport(data) {
 		var width = object["width"];
 		var height = object["height"];
 		var analyzed_text = object["analyzed_text"];
-		
-		if (!analyzed_text) {
-			analyzed_text = "<b style='color:#FF0000'>NONE</b>";
-		}
 		
 		var max_severity = 0;
 		for (var i in issues) {
@@ -83,15 +81,23 @@ function renderReport(data) {
 		var $message_header = $("<div>");
 		$message_header.addClass("message-header");
 		
-		var $message_header_p = $("<p>");
-		$message_header_p.html(`<a href="#resource_${rid}"><i class="fa fa-hashtag"></i></a> Resource: ${rid} [${max_severity_name.toUpperCase()}]`);
-		$message_header.append($message_header_p);
+		$message_header.append(`
+			<p><a href="#resource_${rid}"><i class="fa fa-hashtag"></i></a> Resource: ${rid}</p>
+			<button class="delete"></button>
+			<!--
+			<label class="checkbox" for="checked_${rid}">
+				<input type="checkbox" id="checked_${rid}" name="checked_${rid}">
+				Reviewed?
+			</label>
+			-->
+		`);
 		
 		var $message_body = $("<div>");
 		$message_body.addClass("message-body");
+		$message_body.addClass("content");
 		
 		
-		var issues_table = "<b>NONE</b>";
+		var issues_table = "";
 		
 		if (issues.length > 0) {
 			issues_table = $("<table>");
@@ -99,6 +105,7 @@ function renderReport(data) {
 			for (var i in issues) {
 				var severity = issues[i].severity;
 				var text = issues[i].text;
+				/*
 				issues_table.append(`
 					<tr>
 						<th>Severity</th>
@@ -109,17 +116,20 @@ function renderReport(data) {
 						<td>${text}</td>
 					</tr>
 				`);
+				*/
+				issues_table.append(`
+					<p><span class='severity severity-${severity}'>${severity.toUpperCase()}</span>&nbsp;${text}</p>
+				`);
 			}
 			
-			issues_table = issues_table.html();
-		} else {
-			issues_table = "<b>NONE</b>";
+			//issues_table = "<table>" + issues_table.html() + "</table>";
+			issues_table = "<div class='content'>" + issues_table.html() + "</div>";
 		}
 		
 		
 		
 		
-		let rasterized_info = "None";
+		let rasterized_info = "";
 		if (rasterized) {
 			rasterized_info = `
 				<table>
@@ -178,27 +188,21 @@ function renderReport(data) {
 		
 		$message_body.append(body);
 		
-		/*
-		var $message_body_p = $("<p>");
-		$message_body_p.text("");
-		$message_body.append($message_body_p);
-		*/
-		
 		$root.append($message_header);
 		$root.append($message_body);
 		
 		$container.append($root);
 	}
 	
+	// On remove button click
+	$("button.delete").click(function() {
+		$(this).parent().parent().remove();
+	});
+	
 }
 
 // On DOM load
 document.addEventListener("DOMContentLoaded", function() {
-
-	// Highlight JS
-	document.querySelectorAll('pre code').forEach((el) => {
-		hljs.highlightElement(el);
-	});
 
 	// Dark mode options
 	$("#dark_mode").click(function() {
@@ -222,9 +226,13 @@ document.addEventListener("DOMContentLoaded", function() {
 		}
 	});
 	
-	// Get report data
-	json_report = JSON.parse($("#raw_json_data pre code").text());
-	$("#raw_json_data pre code").text(JSON.stringify(json_report, null, 4));
+	// Set JSON report
+	$("#raw_json_data button").click(function () {
+		$(this).parent().html(`
+			<pre><code style="border-radius:8px;" class="language-json">${JSON.stringify(full_report, null, 4)}</code></pre>
+		`);
+		hljs.highlightAll();
+	});
 	
 	renderReport(json_report);
 	

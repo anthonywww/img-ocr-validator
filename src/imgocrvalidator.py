@@ -61,6 +61,10 @@ class ImgOCRValidator():
 			original_template = fp.read()
 			fp.close()
 			
+			fp = open("src/script.js", 'r')
+			script = fp.read()
+			fp.close()
+			
 			# Create reports/ directory
 			if not os.path.isdir("reports"):
 				os.mkdir("reports")
@@ -78,8 +82,14 @@ class ImgOCRValidator():
 				template = template.replace("{json_data_pretty}", json.dumps(results[result]["images"], indent=4))
 				template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 				
+				script = script.replace("{json_data}", json.dumps(results[result]["images"], indent=None, separators=(",", ":")))
+				
 				fp = open(f"reports/{report_name}.html", 'w')
 				fp.write(template)
+				fp.close()
+				
+				fp = open("reports/script.js", 'w')
+				fp.write(script);
 				fp.close()
 			
 		except Exception as err:
