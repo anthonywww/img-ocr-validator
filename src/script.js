@@ -4,16 +4,6 @@ var dark_mode = false;
 const full_report = {json_data};
 var json_report = full_report;
 
-String.prototype.hashCode = function() {
-	var hash = 0;
-	for (var i = 0; i < this.length; i++) {
-		var char = this.charCodeAt(i);
-		hash = ((hash<<5)-hash)+char;
-		hash = hash & hash; // Convert to 32-bit integer
-	}
-	return hash;
-}
-
 const severities = {
 	"none": {"value": 0, "style": ""},
 	"info": {"value": 1, "style": "is-info"},
@@ -36,8 +26,7 @@ function renderReport(data) {
 		var download_time = object["download_time"];
 		var content_type = object["content_type"];
 		var rasterized = object["rasterized"];
-		
-		var rid = Math.abs(url.hashCode()).toString(16);
+		var rid = object["resource_id"];
 		
 		// Optional
 		var width = object["width"];
@@ -105,29 +94,13 @@ function renderReport(data) {
 			for (var i in issues) {
 				var severity = issues[i].severity;
 				var text = issues[i].text;
-				/*
-				issues_table.append(`
-					<tr>
-						<th>Severity</th>
-						<td class="severity severity-${severity}">${severity.toUpperCase()}</td>
-					</tr>
-					<tr>
-						<th>Message</th>
-						<td>${text}</td>
-					</tr>
-				`);
-				*/
 				issues_table.append(`
 					<p><span class='severity severity-${severity}'>${severity.toUpperCase()}</span>&nbsp;${text}</p>
 				`);
 			}
 			
-			//issues_table = "<table>" + issues_table.html() + "</table>";
 			issues_table = "<div class='content'>" + issues_table.html() + "</div>";
 		}
-		
-		
-		
 		
 		let rasterized_info = "";
 		if (rasterized) {

@@ -4,6 +4,7 @@ import re
 import sys
 import json
 import time
+import hashlib
 import requests
 import requests.exceptions
 import enchant
@@ -227,10 +228,29 @@ class ImgOCRValidator():
 					src = img_tag["src"]
 					alt = img_tag["alt"]
 					
+					
+					# Generate hash of the SRC url
+					m = hashlib.sha1()
+					m.update(str(src).encode('utf-8'))
+					resource_id = m.hexdigest()
+					
+					# Ignore duplicate resource id's
+					if not options["allow_duplicates"]:
+						duplicate = False
+						for i in self.results[url]["images"]:
+							if i["resource_id"] == resource_id:
+								self.log(f"[{url}] - Skipping duplicate resource_id {resource_id} for {src}")
+								duplicate = True
+								break
+						
+						if duplicate:
+							continue 
+					
 					index = len(self.results[url]["images"])
 					self.results[url]["images"].append({})
 					self.results[url]["images"][index]["url"] = src
 					self.results[url]["images"][index]["alt"] = alt
+					self.results[url]["images"][index]["resource_id"] = resource_id
 					self.results[url]["images"][index]["issues"] = []
 					
 					# If the image is Base64 encoded just ignore it for now
@@ -408,6 +428,7 @@ def parse_cli_args():
 	parser.add_argument("-k", "--legacy-report", action="store_true", help="Use the legacy HTML reporter.")
 	parser.add_argument("-s", "--severity", type=str, help=f"Only include <SEVERITY> or greater in the report. (Valid severities: {severities_string})")
 	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors. (Separated by , (commas))")
+	parser.add_argument("--allow-duplicates", action="store_true", help="Ignore duplicate resource id's")
 	
 	args = parser.parse_args()
 	
@@ -416,6 +437,7 @@ def parse_cli_args():
 	legacy_report = args.legacy_report or False
 	severity = args.severity or False
 	exclude = args.exclude or False
+	allow_duplicates = args.allow_duplicates or False
 	
 	if not severity == False and (not severity == "NONE" and not severity == "INFO" and not severity == "WARN" and not severity == "ERROR"):
 		print(f"Error: Severity must be {severities_string}")
@@ -431,6 +453,7 @@ def parse_cli_args():
 	options["legacy_report"] = legacy_report
 	options["severity"] = severity
 	options["exclude"] = exclude
+	options["allow_duplicates"] = allow_duplicates
 	
 	ImgOCRValidator(args.urls, options)
 
