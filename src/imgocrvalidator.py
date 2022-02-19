@@ -4,79 +4,56 @@ import re
 import sys
 import json
 import time
+import hashlib
 import requests
 import requests.exceptions
 import enchant
+import argparse
 import tempfile
 import pytesseract
+from urllib.error import *
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from PIL import Image
 
+from severity import Severity
+
 class ImgOCRValidator():
 
-	def __init__(self, urls: str, generate_html_report: bool, only_generate_report: bool, use_legacy_html_report: bool):
+	def __init__(self, urls: str, options: dict):
 		
 		# Check if only generating HTML report from existing report.json
-		if only_generate_report:
+		if options["parse_only"]:
 			try:
 				fp = open("report.json", 'r')
 				json_report = json.loads(fp.read())
 				fp.close()
-				if use_legacy_html_report:
-					self.generate_legacy_report(json_report)
-				else:
-					self.generate_report(json_report)
+				self.generate_report(json_report)
 			except Exception as err:
 				self.log(f"Error while trying to read report.json file: {err}")
 			return
-		
+				
 		# Check if URLs are valid
 		for url in urls:
 			if not self.uri_validator(url):
-				raise Exception(f"Invalid URL provided: {url}")
+				print(f"Invalid URL provided: {url}")
+				return
 		
 		if len(urls) == 0:
 			raise Exception("No URLs provided")
 		
 		self.results = {}
-		self.parse(urls)
+		self.parse(urls, options)
 		
-		if generate_html_report:
-			if use_legacy_html_report:
-				self.generate_legacy_report(self.results)
-			else:
-				self.generate_report(self.results)
+		if options["generate_report"]:
+			self.generate_report(self.results)
 
 	def generate_report(self, results):
 		self.log(f"Saving html report ...")
 		
 		try:
 			fp = open("src/template.html", 'r')
-			template = fp.read()
-			template = template.replace("{json_data}", json.dumps(results, indent=None, separators=(",", ":")))
-			template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
-			fp.close()
-			
-			fp = open("report.html", 'w')
-			fp.write(template)
-			fp.close()
-		except Exception as err:
-			self.log(f"Error while trying to read template html file: {err}")
-		
-
-	def generate_legacy_report(self, results):
-		import json2html
-		
-		self.log(f"Saving legacy html report ...")
-		
-		try:
-			fp = open("src/_header.html", 'r')
-			header = fp.read()
-			fp.close()
-			
-			fp = open("src/_footer.html", 'r')
-			footer = fp.read()
+			original_template = fp.read()
 			fp.close()
 			
 			# Create reports/ directory
@@ -84,53 +61,43 @@ class ImgOCRValidator():
 				os.mkdir("reports")
 			
 			for result in results:
-				report = json2html.json2html.convert(json=results[result]["images"])
 				
-				image_count_no_issues = 0
-				image_count_info_issues = 0
-				image_count_warn_issues = 0
-				image_count_error_issues = 0
-				
-				for img in results[result]["images"]:
-					if len(img["issues"]) == 0:
-						image_count_no_issues = image_count_no_issues + 1
-					else:
-						for issues in img["issues"]:
-							if issues["severity"] == "info":
-								image_count_info_issues = image_count_info_issues + 1
-							elif issues["severity"] == "warn":
-								image_count_warn_issues = image_count_warn_issues + 1
-							elif issues["severity"] == "error":
-								image_count_error_issues = image_count_error_issues + 1
-				
-				# Replace template holders
-				header = header.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
-				footer = footer.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
-				
-				header = header.replace("{total_images}", str(len(results[result]["images"])))
-				header = header.replace("{severity_none}", str(image_count_no_issues))
-				header = header.replace("{severity_info}", str(image_count_info_issues))
-				header = header.replace("{severity_warn}", str(image_count_warn_issues))
-				header = header.replace("{severity_error}", str(image_count_error_issues))
-				
-				if report.endswith("/"):
-					report = report[:-1]
-				
-				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_")
+				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_").replace("+", "_")
 				report_name = re.sub(r"[^a-zA-Z0-9-_. ]", "", report_name)
 				
+				if report_name.endswith("_"):
+					report_name = report_name[:-1]
+				
+				template = original_template
+				template = template.replace("{url}", result)
+				template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
+				
 				fp = open(f"reports/{report_name}.html", 'w')
-				fp.write(header)
-				fp.write(report)
-				fp.write(footer)
+				fp.write(template)
 				fp.close()
+			
+			
+			fp = open("src/script.js", 'r')
+			script = fp.read()
+			fp.close()
+			
+			script = script.replace("{json_data}", json.dumps(results, indent=None, separators=(",", ":")))
 				
-				
+			fp = open("reports/script.js", 'w')
+			fp.write(script);
+			fp.close()
+			
 		except Exception as err:
-			self.log(f"Error while trying to read legacy template html files: {err}")
-
-
-	def parse(self, urls: str):
+			self.log(f"Error while trying to read template html file: {err}")
+	
+	
+	def parse(self, urls: str, options: dict):
+		
+		headers = {
+			"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0"
+		}
+		
+		
 		# Print URLs provided
 		self.log("URLS = %s" %(urls))
 		
@@ -144,7 +111,7 @@ class ImgOCRValidator():
 				# Fetch HTML
 				self.log(f"[{url}] Fetching source ...")
 				start_time = time.process_time()
-				response = requests.get(url)
+				response = requests.get(url, headers=headers)
 				response.raise_for_status()
 				end_time = time.process_time()
 				fetch_time = end_time - start_time
@@ -157,6 +124,23 @@ class ImgOCRValidator():
 				end_time = time.process_time()
 				parse_time = end_time - start_time
 				self.results[url]["metrics"]["parse_time"] = parse_time
+				
+				# Filter out exclusion rules
+				if options["exclude"]:
+					
+					if options["exclude"].startswith("'") and options["exclude"].endswith("'"):
+						options["exclude"] = options["exclude"][1:-1]
+					if options["exclude"].startswith("\"") and options["exclude"].endswith("\""):
+						options["exclude"] = options["exclude"][1:-1]
+					
+					excluded_selectors = options["exclude"].split(",")
+					
+					for excluded_selector in excluded_selectors:
+						excluded_selector = excluded_selector.strip()
+						if not excluded_selector == None and len(excluded_selector) > 0:
+							self.log(f"[{url}] Running exclusion rule for '{excluded_selector}' ...")
+							for found in soup.select(excluded_selector):
+								found.decompose()
 				
 				# Search HTML for <img> tags
 				img_tags = soup.find_all('img')
@@ -174,15 +158,32 @@ class ImgOCRValidator():
 					if not img_tag.has_attr("alt"):
 						img_tag["alt"] = None
 					
-					path = self.get_css_path(img_tag)
 					src = img_tag["src"]
 					alt = img_tag["alt"]
+					
+					
+					# Generate hash of the SRC url
+					m = hashlib.sha1()
+					m.update(str(src).encode('utf-8'))
+					resource_id = m.hexdigest()
+					
+					# Ignore duplicate resource id's
+					if not options["allow_duplicates"]:
+						duplicate = False
+						for i in self.results[url]["images"]:
+							if i["resource_id"] == resource_id:
+								self.log(f"[{url}] - Skipping duplicate resource_id {resource_id} for {src}")
+								duplicate = True
+								break
+						
+						if duplicate:
+							continue 
 					
 					index = len(self.results[url]["images"])
 					self.results[url]["images"].append({})
 					self.results[url]["images"][index]["url"] = src
 					self.results[url]["images"][index]["alt"] = alt
-					self.results[url]["images"][index]["path"] = path
+					self.results[url]["images"][index]["resource_id"] = resource_id
 					self.results[url]["images"][index]["issues"] = []
 					
 					# If the image is Base64 encoded just ignore it for now
@@ -193,8 +194,12 @@ class ImgOCRValidator():
 					
 					# Check if url has a protocol
 					if not src.startswith("http://") and not src.startswith("https://"):
-						purl = urlparse(url)
-						src = purl.scheme + "://" + purl.netloc + src
+						if src.startswith("//"):
+							purl = urlparse(url)
+							src = purl.scheme + ":" + src
+						else:
+							purl = urlparse(url)
+							src = purl.scheme + "://" + purl.netloc + src
 					
 					# Check if url has trailing whitespace
 					if src.endswith(" ") or src.endswith("%20"):
@@ -212,11 +217,14 @@ class ImgOCRValidator():
 						self.log(f"[{url}] - Empty alt attribute for {src}")
 						self.results[url]["images"][index]["issues"].append(dict(severity="warn", text="Alt attribute is empty."))
 
+					# Set the URL again after filtering
+					self.results[url]["images"][index]["url"] = src
+
 					# Check if the image returns a valid HTTP status code
 					self.log(f"[{url}] - Validating source {src} ...")
 					try:
 						start_time = time.process_time()
-						response = requests.get(src, stream=True, timeout=30)
+						response = requests.get(src, stream=True, timeout=30, headers=headers)
 						response.raise_for_status()
 						end_time = time.process_time()
 						fetch_time = end_time - start_time
@@ -288,9 +296,10 @@ class ImgOCRValidator():
 										cleaned_text.append(word)
 										# This word IS real, check if this word exists in the alt attribute
 										exists = False
-										for w in alt.split(" "):
-											if word.lower() in w.lower() or w.lower().startswith(word):
-												exists = True
+										if not alt == None:
+											for w in alt.split(" "):
+												if word.lower() in w.lower() or w.lower().startswith(word):
+													exists = True
 
 										if not exists:
 											self.results[url]["images"][index]["issues"].append(dict(severity="info", text=f"Word '{word.lower()}' does not exist in the alt attribute."))
@@ -320,25 +329,6 @@ class ImgOCRValidator():
 		fp = open("report.json", 'w')
 		fp.write(json.dumps(self.results, indent = 4))
 		fp.close()
-		
-
-	# https://stackoverflow.com/questions/25969474/beautifulsoup-extract-xpath-or-css-path-of-node
-	def get_element(self, node):
-		# for XPATH we have to count only for nodes with same type!
-		length = len(list(node.previous_siblings)) + 1
-		if (length) > 1:
-			return '%s:nth-child(%s)' % (node.name, length)
-		else:
-			return node.name
-
-	# https://stackoverflow.com/questions/25969474/beautifulsoup-extract-xpath-or-css-path-of-node
-	def get_css_path(self, node):
-		path = [self.get_element(node)]
-		for parent in node.parents:
-			if parent.name == 'body':
-				break
-			path.insert(0, self.get_element(parent))
-		return ' > '.join(path)
 
 	# Print to console
 	def log(self, *msg):
@@ -355,34 +345,48 @@ class ImgOCRValidator():
 			return False
 
 
-def parse_cli_args(args):
-	binary = args.pop(0)
+def parse_cli_args():
+	parser = argparse.ArgumentParser(prog="img-ocr-validator", description="Launch flags for img-ocr-validator.", exit_on_error=True)
 	
-	generate_html_report = False
-	only_generate_report = False
-	use_legacy_html_report = False
-	urls = []
+	severities = []
 	
-	for arg in args:
-		if not arg.startswith("-"):
-			urls.append(arg)
-		else:
-			if arg == "-h" or arg == "--help" or arg == "-?":
-				print(f"Usage: {binary} [args] <URLS>")
-				print(f" -h, -?, --help ....... Show all args.")
-				print(f" -g ................... Generate HTML report.")
-				print(f" -p ................... Generate HTML report from existing report.json.")
-				print(f" -k ................... Use the legacy HTML reporter.")
-				return
-			if arg == "-g":
-				generate_html_report = True
-			if arg == "-p":
-				only_generate_report = True
-			if arg == "-k":
-				use_legacy_html_report = True
-			
-	ImgOCRValidator(urls, generate_html_report, only_generate_report, use_legacy_html_report)
+	for s in Severity:
+		severities.append(s.name)
+	
+	severities_string = ', '.join(map(str, severities))
+	
+	parser.add_argument("urls", metavar="URL", type=str, nargs="*", help="URLs to analyze.")
+	parser.add_argument("-g", "--generate-report", action="store_true", help="Generate HTML reports.")
+	parser.add_argument("-p", "--parse-only", action="store_true", help="Generate HTML reports from existing report.json.")
+	parser.add_argument("-s", "--severity", type=str, help=f"Only include <SEVERITY> or greater in the report. (Valid severities: {severities_string})")
+	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors. (Separated by , (commas))")
+	parser.add_argument("--allow-duplicates", action="store_true", help="Ignore duplicate resource id's (may cause unexpected results!)")
+	
+	args = parser.parse_args()
+	
+	generate_report = args.generate_report or False
+	parse_only = args.parse_only or False
+	severity = args.severity or False
+	exclude = args.exclude or False
+	allow_duplicates = args.allow_duplicates or False
+	
+	if not severity == False and (not severity == "NONE" and not severity == "INFO" and not severity == "WARN" and not severity == "ERROR"):
+		print(f"Error: Severity must be {severities_string}")
+		return 100
+	
+	for s in Severity:
+		if s.name == severity:
+			severity = s
+	
+	options = {}
+	options["generate_report"] = generate_report
+	options["parse_only"] = parse_only
+	options["severity"] = severity
+	options["exclude"] = exclude
+	options["allow_duplicates"] = allow_duplicates
+	
+	ImgOCRValidator(args.urls, options)
 
 if __name__ == '__main__':
-	parse_cli_args(sys.argv)
+	parse_cli_args()
 

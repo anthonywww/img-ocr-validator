@@ -14,7 +14,7 @@ ADD requirements.txt .
 RUN cd /root && pip install -r requirements.txt
 
 # Use the URLS environment variable
-ENV URLS=""
+ENV ARGS=""
 
 CMD /bin/bash ./launch.sh ${ARGS}
 
