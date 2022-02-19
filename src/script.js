@@ -191,6 +191,65 @@ function renderReport(data) {
 }
 
 
+function process(resource, r) {
+	
+	// Check if resource was manually removed
+	for (let i in filter["excluded"]) {
+		if (resource["resource_id"] == filter["excluded"][i]) {
+			return false;
+		}
+	}
+	
+	// Severity filters
+	if (resource.issues.length > 0) {
+		// Go through each issue ...
+		for (var i in resource.issues) {
+			let severity = resource.issues[i].severity;
+			
+			for (var j in filter.severity) {
+				if (j == "none") {continue;}
+				
+				if (severity == j && !filter.severity[j]) {
+					return false;
+				}
+			}
+			
+		}
+	} else {
+		if (!filter.severity.none) {
+			return false;
+		}
+	}
+	
+	// Resource Type
+	if (filter["resource_type"] == "rasterized") {
+		if (!resource.rasterized || resource.content_type == undefined) {
+			return false;
+		}
+	} else if(filter["resource_type"] == "not_rasterized") {
+		if(resource.rasterized || resource.content_type == undefined) {
+			return false;
+		}
+	}
+	
+	// Alt text search
+	let alt_search_string = filter.search.alt.trim();
+	if (alt_search_string.length > 0) {
+		if (resource.alt) {
+			if (!resource.alt.toString().toLowerCase().includes(alt_search_string.toLowerCase())) {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	
+	
+	
+	return true;
+}
+
+
 function runReportFilter() {
 
 	if (filter.resetting) {
@@ -201,73 +260,60 @@ function runReportFilter() {
 	
 	for (let r in json_report) {
 		let resource = json_report[r];
-		let exclude = false;
-		
-		// Check if resource was manually removed
-		for (let i in filter["excluded"]) {
-			if (resource["resource_id"] == filter["excluded"][i]) {
-				console.log(`Excluded Resource Id: ${resource.resource_id}`);
-				exclude = true;
-				break;
-			}
-		}
-		
-		
-		if (resource.issues.length > 0) {
-			// Go through each issue ...
-			for (var i in resource.issues) {
-				let severity = resource.issues[i].severity;
-				
-				for (var j in filter.severity) {
-					if (j == "none") {continue;}
-					
-					if (severity == j && !filter.severity[j]) {
-						exclude = true;
-						break;
-					}
-				}
-				
-			}
-		} else {
-			if (!filter.severity.none) {
-				exclude = true;
-			}
-		}
-		
-		
-		let alt_search_string = filter.search.alt.trim();
-		if (alt_search_string.length > 0) {
-			if (resource.alt) {
-				if (!resource.alt.toString().includes(alt_search_string)) {
-					exclude = true
-				}
-			} else {
-				exclude = true;
-			}
-		}
-		
-		
-		
-		
-		
-		
-		if (!exclude) {
+		let include = process(resource, r);
+		if (include) {
 			results.push(resource);
 		}
 	}
 	
-	
-	
-	
-	
 	renderReport(results);
 }
+
+function timeDifference(current, previous) {
+	var msPerMinute = 60 * 1000;
+	var msPerHour = msPerMinute * 60;
+	var msPerDay = msPerHour * 24;
+	var msPerMonth = msPerDay * 30;
+	var msPerYear = msPerDay * 365;
+
+	var elapsed = current - previous;
+
+	if (elapsed < msPerMinute) {
+		return Math.round(elapsed/1000) + ' seconds ago';
+	} else if (elapsed < msPerHour) {
+		return Math.round(elapsed/msPerMinute) + ' minutes ago';
+	} else if (elapsed < msPerDay ) {
+		return Math.round(elapsed/msPerHour ) + ' hours ago';
+	} else if (elapsed < msPerMonth) {
+		return 'approximately ' + Math.round(elapsed/msPerDay) + ' days ago';
+	} else if (elapsed < msPerYear) {
+		return 'approximately ' + Math.round(elapsed/msPerMonth) + ' months ago';
+	} else {
+		return 'approximately ' + Math.round(elapsed/msPerYear ) + ' years ago';
+	}
+}
+
+function updateTimestamps() {
+	$("time.timestamp").each(function() {
+		let created = new Date(Date.parse($(this).attr("datetime")));
+		let now = new Date();
+		let diff = timeDifference(created, now);
+		
+		$(this).attr("title", diff);
+	});
+}
+
+
 
 // On DOM load
 document.addEventListener("DOMContentLoaded", function() {
 
 	// Set relevant report
-	json_report = full_report[$("#report_url").val()]["images"];
+	json_report = full_report[$("#url_resource_id").val()]["resources"];
+	
+	// Set relative time hover, updated every 30 seconds
+	setInterval(updateTimestamps, 1000 * 30);
+	updateTimestamps();
 
 	// Dark mode options
 	$("#dark_mode").click(function() {
@@ -363,7 +409,7 @@ document.addEventListener("DOMContentLoaded", function() {
 		// Reset to filter and report to default values
 		// Hack to deep-copy default filters, not reference
 		filter = JSON.parse(JSON.stringify(default_filter));
-		json_report = full_report[$("#report_url").val()]["images"];
+		json_report = full_report[$("#url_resource_id").val()]["resources"];
 		
 		runReportFilter();
 	});

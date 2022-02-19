@@ -62,14 +62,16 @@ class ImgOCRValidator():
 			
 			for result in results:
 				
-				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_").replace("+", "_")
+				report_name = results[result]["url"].replace("https://", "").replace("http://", "").replace("/", "_").replace("+", "_")
 				report_name = re.sub(r"[^a-zA-Z0-9-_. ]", "", report_name)
 				
 				if report_name.endswith("_"):
 					report_name = report_name[:-1]
 				
+				
 				template = original_template
-				template = template.replace("{url}", result)
+				template = template.replace("{url}", results[result]["url"])
+				template = template.replace("{url_resource_id}", result)
 				template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
 				
 				fp = open(f"reports/{report_name}.html", 'w')
@@ -88,7 +90,7 @@ class ImgOCRValidator():
 			fp.close()
 			
 		except Exception as err:
-			self.log(f"Error while trying to read template html file: {err}")
+			self.log(f"Error while trying to generate html file: {err}")
 	
 	
 	def parse(self, urls: str, options: dict):
@@ -103,18 +105,23 @@ class ImgOCRValidator():
 		# For each of the URLs provided open 
 		for url in urls:
 			try:
-				self.results[url] = {}
-				self.results[url]["metrics"] = {}
-				self.results[url]["images"] = []
+				m = hashlib.sha1()
+				m.update(str(url).encode('utf-8'))
+				url_resource_id = m.hexdigest()
+				
+				self.results[url_resource_id] = {}
+				self.results[url_resource_id]["url"] = url
+				self.results[url_resource_id]["metrics"] = {}
+				self.results[url_resource_id]["resources"] = []
 				
 				# Fetch HTML
-				self.log(f"[{url}] Fetching source ...")
+				self.log(f"[{url}] URL Resource Id: {url_resource_id} Fetching source ...")
 				start_time = time.process_time()
 				response = requests.get(url, headers=headers)
 				response.raise_for_status()
 				end_time = time.process_time()
 				fetch_time = end_time - start_time
-				self.results[url]["metrics"]["download_time"] = fetch_time
+				self.results[url_resource_id]["metrics"]["download_time"] = fetch_time
 				
 				# Parse HTML
 				self.log(f"[{url}] Parsing HTML ...")
@@ -122,7 +129,7 @@ class ImgOCRValidator():
 				soup = BeautifulSoup(response.text, "html.parser")
 				end_time = time.process_time()
 				parse_time = end_time - start_time
-				self.results[url]["metrics"]["parse_time"] = parse_time
+				self.results[url_resource_id]["metrics"]["parse_time"] = parse_time
 				
 				# Filter out exclusion rules
 				if options["exclude"]:
@@ -145,7 +152,7 @@ class ImgOCRValidator():
 				img_tags = soup.find_all('img')
 				img_tags_count = len(img_tags)
 				self.log(f"[{url}] Found {img_tags_count} <img> tags (download = {int(round(fetch_time * 1000.0))}ms, parse = {int(round(parse_time * 1000.0))}ms) ...")
-				self.results[url]["metrics"]["total_images"] = img_tags_count
+				self.results[url_resource_id]["metrics"]["total_images"] = img_tags_count
 				
 				# For each <img> ... process it
 				for img_tag in img_tags:
@@ -169,7 +176,7 @@ class ImgOCRValidator():
 					# Ignore duplicate resource id's
 					if not options["allow_duplicates"]:
 						duplicate = False
-						for i in self.results[url]["images"]:
+						for i in self.results[url_resource_id]["resources"]:
 							if i["resource_id"] == resource_id:
 								self.log(f"[{url}] - Skipping duplicate resource_id {resource_id} for {src}")
 								duplicate = True
@@ -178,12 +185,12 @@ class ImgOCRValidator():
 						if duplicate:
 							continue 
 					
-					index = len(self.results[url]["images"])
-					self.results[url]["images"].append({})
-					self.results[url]["images"][index]["url"] = src
-					self.results[url]["images"][index]["alt"] = alt
-					self.results[url]["images"][index]["resource_id"] = resource_id
-					self.results[url]["images"][index]["issues"] = []
+					index = len(self.results[url_resource_id]["resources"])
+					self.results[url_resource_id]["resources"].append({})
+					self.results[url_resource_id]["resources"][index]["url"] = src
+					self.results[url_resource_id]["resources"][index]["alt"] = alt
+					self.results[url_resource_id]["resources"][index]["resource_id"] = resource_id
+					self.results[url_resource_id]["resources"][index]["issues"] = []
 					
 					# If the image is Base64 encoded just ignore it for now
 					# TODO: Parse Base64 images for processing
@@ -203,21 +210,21 @@ class ImgOCRValidator():
 					# Check if url has trailing whitespace
 					if src.endswith(" ") or src.endswith("%20"):
 						self.log(f"[{url}] - Url ends with a space {src}")
-						self.results[url]["images"][index]["issues"].append(dict(severity="warn", text="This image URL ends with a trailing space."))
+						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="warn", text="This image URL ends with a trailing space."))
 						src = src.strip()
 					
 					# Check if the <img src=""> contains a valid URL
 					if not self.uri_validator(src):
 						self.log(f"[{url}] - Invalid URL for {src}")
-						self.results[url]["images"][index]["issues"].append(dict(severity="error", text="Invalid URL provided in src attribute."))
+						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="error", text="Invalid URL provided in src attribute."))
 
 					# Check if empty <img alt=""> alt attribute
 					if not alt or len(alt.strip()) == 0:
 						self.log(f"[{url}] - Empty alt attribute for {src}")
-						self.results[url]["images"][index]["issues"].append(dict(severity="warn", text="Alt attribute is empty."))
+						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="warn", text="Alt attribute is empty."))
 
 					# Set the URL again after filtering
-					self.results[url]["images"][index]["url"] = src
+					self.results[url_resource_id]["resources"][index]["url"] = src
 
 					# Check if the image returns a valid HTTP status code
 					self.log(f"[{url}] - Validating source {src} ...")
@@ -228,28 +235,33 @@ class ImgOCRValidator():
 						end_time = time.process_time()
 						fetch_time = end_time - start_time
 						rasterized_image = False
-						self.results[url]["images"][index]["download_time"] = fetch_time
+						self.results[url_resource_id]["resources"][index]["download_time"] = fetch_time
 						
 						# Grab content-type
+						if not 'content-type' in response.headers:
+							self.log(f"[{url}] - Header 'content-type' is not set for {src}")
+							self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="error", text="Header 'content-type' not set. Broken image?"))
+							continue
+						
 						content_type = response.headers['content-type']
 						content_type = content_type.lower()
 						if ";" in content_type:
 							content_type = content_type.split(";")[0]
-						self.results[url]["images"][index]["content_type"] = content_type
+						self.results[url_resource_id]["resources"][index]["content_type"] = content_type
 						
 						if content_type == "image/png" or content_type == "image/jpeg" or content_type == "image/gif" or content_type == "image/tiff":
 							rasterized_image = True
 						
-						self.results[url]["images"][index]["rasterized"] = rasterized_image
+						self.results[url_resource_id]["resources"][index]["rasterized"] = rasterized_image
 						
 						if not rasterized_image and not content_type == "image/svg" and not content_type == "image/svg+xml":
 							self.log(f"[{url}] - Invalid content-type {content_type} for {src}")
-							self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Invalid headers 'content-type': {content_type}."))
+							self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="warn", text=f"Invalid headers 'content-type': {content_type}."))
 						
 						# Ensure content-length is not null
 						if not 'content-length' in response.headers:
 							self.log(f"[{url}] - Invalid content-length for {src}")
-							self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Null header 'content-length'."))
+							self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="warn", text=f"Null header 'content-length'."))
 						else:
 							# Do binary file checks
 							if rasterized_image:
@@ -267,8 +279,8 @@ class ImgOCRValidator():
 								img = Image.open(io.BytesIO(buffer.read()))
 								buffer.close()
 								
-								self.results[url]["images"][index]["width"] = img.width
-								self.results[url]["images"][index]["height"] = img.height
+								self.results[url_resource_id]["resources"][index]["width"] = img.width
+								self.results[url_resource_id]["resources"][index]["height"] = img.height
 								
 								# Verify width/height if provided in the query params (size/dimensions) ?size=100x100
 								if "?" in src:
@@ -281,7 +293,7 @@ class ImgOCRValidator():
 												query_width = query_value.split("x")[0]
 												query_height = query_value.split("x")[1]
 												if not int(img.width) == int(query_width) or not int(img.height) == int(query_height):
-													self.results[url]["images"][index]["issues"].append(dict(severity="warn", text=f"Image with query parameters does not match size requested. Expected {query_width}x{query_height} but instead got {img.width}x{img.height}."))
+													self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="warn", text=f"Image with query parameters does not match size requested. Expected {query_width}x{query_height} but instead got {img.width}x{img.height}."))
 								
 								# Analyze using OCR
 								img_text_array = pytesseract.image_to_string(img).strip().split()
@@ -301,17 +313,17 @@ class ImgOCRValidator():
 													exists = True
 
 										if not exists:
-											self.results[url]["images"][index]["issues"].append(dict(severity="info", text=f"Word '{word.lower()}' does not exist in the alt attribute."))
+											self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="info", text=f"Word '{word.lower()}' does not exist in the alt attribute."))
 
-								self.results[url]["images"][index]["analyzed_text"] = ' '.join(cleaned_text)
+								self.results[url_resource_id]["resources"][index]["analyzed_text"] = ' '.join(cleaned_text)
 						
 					except HTTPError as http_err:
 						self.log(f"[{url}] - HTTP Error: {http_err} for {src}")
-						self.results[url]["images"][index]["issues"].append(dict(severity="error", text=f"Bad HTTP response, status code: {response.status_code}."))
+						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="error", text=f"Bad HTTP response, status code: {response.status_code}."))
 						continue
 					except TimeoutError as timeout_err:
 						self.log(f"[{url}] - Timeout Error: {timeout_err} for {src}")
-						self.results[url]["images"][index]["issues"].append(dict(severity="error", text=f"Took longer than 30 seconds to get the image."))
+						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="error", text=f"Took longer than 30 seconds to get the image."))
 						continue
 
 			except KeyboardInterrupt:

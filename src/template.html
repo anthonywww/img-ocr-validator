@@ -66,7 +66,7 @@
 			<div class="content">
 				<p>
 					This report has been generated on <time class="timestamp" datetime="{date_generated}">{date_generated}</time> for <a href="{url}" target="_blank">{url}</a> using OCR (Optical Character Recognition) algorithms and basic HTML &lt;img&gt; element checks.
-					<input type="hidden" id="report_url" name="report_url" value="{url}">
+					<input type="hidden" id="url_resource_id" name="url_resource_id" value="{url_resource_id}">
 				</p>
 				<p>
 					Use the filters below to navigate through the resources (results).
@@ -115,8 +115,8 @@
 								<div class="control">
 									<div class="select">
 										<select name="filter_resource_type" id="filter_resource_type">
-											<option value="rasterized">Rasterized (PNG/JPG/GIF...)</option>
-											<option value="not_rasterized">Not Rasterized (SVG+XML)</option>
+											<option value="rasterized">Raster (PNG/JPG/GIF...)</option>
+											<option value="not_rasterized">Vector (SVG+XML)</option>
 											<option value="any" selected>Any</option>
 										</select>
 									</div>
