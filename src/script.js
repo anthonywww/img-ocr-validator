@@ -1,15 +1,29 @@
-
-// Default value for dark-mode
-var dark_mode = false;
 const full_report = {json_data};
-var json_report = full_report;
-
 const severities = {
-	"none": {"value": 0, "style": ""},
+	"none": {"value": 0, "style": "is-success"},
 	"info": {"value": 1, "style": "is-info"},
 	"warn": {"value": 2, "style": "is-warning"},
 	"error": {"value": 3, "style": "is-danger"}
-}
+};
+const default_filter = {
+	"severity": {
+		"none": true,
+		"info": true,
+		"warn": true,
+		"error": true
+	},
+	"resource_type": "any",
+	"search": {
+		"alt": ""
+	},
+	"excluded": []
+};
+
+let dark_mode = false;
+let json_report = null;
+// Hack to deep-copy the filters, not reference
+let filter = JSON.parse(JSON.stringify(default_filter));
+
 
 function renderReport(data) {
 
@@ -46,14 +60,14 @@ function renderReport(data) {
 		
 		var max_severity_name = "NONE";
 		
-		for (s in severities) {
+		for (var s in severities) {
 			if (severities[s].value == max_severity) {
 				max_severity_name = s;
 				break;
 			}
 		}
 		
-		var severity_style = "";
+		var severity_style = "is-success";
 		
 		if (max_severity > 0) {
 			for (var s in severities) {
@@ -63,7 +77,7 @@ function renderReport(data) {
 			}
 		}
 		
-		var $root = $(`<article id="resource_${rid}">`);
+		var $root = $(`<article id="resource_${rid}" data-resource-id="${rid}">`);
 		$root.addClass("message");
 		$root.addClass(severity_style);
 		
@@ -71,14 +85,8 @@ function renderReport(data) {
 		$message_header.addClass("message-header");
 		
 		$message_header.append(`
-			<p><a href="#resource_${rid}"><i class="fa fa-hashtag"></i></a> Resource: ${rid}</p>
+			<p><a href="#resource_${rid}"><i class="fa fa-hashtag"></i></a> Resource Id: ${rid}</p>
 			<button class="delete"></button>
-			<!--
-			<label class="checkbox" for="checked_${rid}">
-				<input type="checkbox" id="checked_${rid}" name="checked_${rid}">
-				Reviewed?
-			</label>
-			-->
 		`);
 		
 		var $message_body = $("<div>");
@@ -95,7 +103,7 @@ function renderReport(data) {
 				var severity = issues[i].severity;
 				var text = issues[i].text;
 				issues_table.append(`
-					<p><span class='severity severity-${severity}'>${severity.toUpperCase()}</span>&nbsp;${text}</p>
+					<p><span class='tag ${severities[severity].style}'>${severity.toUpperCase()}</span>&nbsp;${text}</p>
 				`);
 			}
 			
@@ -167,15 +175,99 @@ function renderReport(data) {
 		$container.append($root);
 	}
 	
+	
 	// On remove button click
-	$("button.delete").click(function() {
+	// This must be done AFTER the rendering is complete, otherwise the .click() bind is unbound.
+	$("#report_breakdown_data button.delete").click(function() {
+		var resource_id = $(this).parent().parent().attr("data-resource-id");
+		
+		if (!(resource_id in filter["excluded"])) {
+			filter["excluded"].push(resource_id);
+		}
+		
 		$(this).parent().parent().remove();
 	});
 	
 }
 
+
+function runReportFilter() {
+
+	if (filter.resetting) {
+		return;
+	}
+	
+	var results = [];
+	
+	for (let r in json_report) {
+		let resource = json_report[r];
+		let exclude = false;
+		
+		// Check if resource was manually removed
+		for (let i in filter["excluded"]) {
+			if (resource["resource_id"] == filter["excluded"][i]) {
+				console.log(`Excluded Resource Id: ${resource.resource_id}`);
+				exclude = true;
+				break;
+			}
+		}
+		
+		
+		if (resource.issues.length > 0) {
+			// Go through each issue ...
+			for (var i in resource.issues) {
+				let severity = resource.issues[i].severity;
+				
+				for (var j in filter.severity) {
+					if (j == "none") {continue;}
+					
+					if (severity == j && !filter.severity[j]) {
+						exclude = true;
+						break;
+					}
+				}
+				
+			}
+		} else {
+			if (!filter.severity.none) {
+				exclude = true;
+			}
+		}
+		
+		
+		let alt_search_string = filter.search.alt.trim();
+		if (alt_search_string.length > 0) {
+			if (resource.alt) {
+				if (!resource.alt.toString().includes(alt_search_string)) {
+					exclude = true
+				}
+			} else {
+				exclude = true;
+			}
+		}
+		
+		
+		
+		
+		
+		
+		if (!exclude) {
+			results.push(resource);
+		}
+	}
+	
+	
+	
+	
+	
+	renderReport(results);
+}
+
 // On DOM load
 document.addEventListener("DOMContentLoaded", function() {
+
+	// Set relevant report
+	json_report = full_report[$("#report_url").val()]["images"];
 
 	// Dark mode options
 	$("#dark_mode").click(function() {
@@ -199,14 +291,107 @@ document.addEventListener("DOMContentLoaded", function() {
 		}
 	});
 	
+	
+	
+	
+	// ---------------
 	// Set JSON report
-	$("#raw_json_data button").click(function () {
-		$(this).parent().html(`
-			<pre><code style="border-radius:8px;" class="language-json">${JSON.stringify(full_report, null, 4)}</code></pre>
-		`);
-		hljs.highlightAll();
+	// ---------------
+	let json_hidden = true;
+	$("#raw_json_data button").click(function() {
+		if (json_hidden) {
+			$(this).text("Hide JSON");
+			$(this).parent().append(`
+				<pre><code style="border-radius:8px;" class="language-json">${JSON.stringify(json_report, null, 4)}</code></pre>
+			`);
+			hljs.highlightAll();
+		} else {
+			$(this).text("Show JSON");
+			$("#raw_json_data pre").remove();
+		}
+		
+		json_hidden = !json_hidden;
 	});
 	
-	renderReport(json_report);
+	let total_issues_none = 0;
+	let total_issues_info = 0;
+	let total_issues_warn = 0;
+	let total_issues_error = 0;
 	
+	for (let i in json_report) {
+		let resource = json_report[i];
+		if (resource.issues.length == 0) {
+			total_issues_none++;
+		} else {
+			for (let j in resource.issues) {
+				let issue = resource.issues[j];
+				if (issue.severity == "info") {
+					total_issues_info++;
+				} else if (issue.severity == "warn") {
+					total_issues_warn++;
+				} else if (issue.severity == "error") {
+					total_issues_error++;
+				}
+			}
+		}
+	}
+	
+	$("#filter_severity_none").next("span.tag").text(`NONE (${total_issues_none})`);
+	$("#filter_severity_info").next("span.tag").text(`INFO (${total_issues_info})`);
+	$("#filter_severity_warn").next("span.tag").text(`WARN (${total_issues_warn})`);
+	$("#filter_severity_error").next("span.tag").text(`ERROR (${total_issues_error})`);
+	
+	
+	// -------
+	// Filters
+	// -------	
+	$("#filter_run").click(function() {
+		runReportFilter();
+	});
+	$("#filter_reset").click(function() {
+	
+		filter.resetting = true;
+		
+		// Reset options
+		$("#filter_severity_none").prop("checked", true);
+		$("#filter_severity_info").prop("checked", true);
+		$("#filter_severity_warn").prop("checked", true);
+		$("#filter_severity_error").prop("checked", true);
+		$("#filter_resource_type").val("any").change();
+		$("#filter_search_alt").val("");
+		
+		// Reset to filter and report to default values
+		// Hack to deep-copy default filters, not reference
+		filter = JSON.parse(JSON.stringify(default_filter));
+		json_report = full_report[$("#report_url").val()]["images"];
+		
+		runReportFilter();
+	});
+	$("#filter_severity_none").change(function() {
+		filter["severity"]["none"] = !filter["severity"]["none"];
+		runReportFilter();
+	});
+	$("#filter_severity_info").change(function() {
+		filter["severity"]["info"] = !filter["severity"]["info"];
+		runReportFilter();
+	});
+	$("#filter_severity_warn").change(function() {
+		filter["severity"]["warn"] = !filter["severity"]["warn"];
+		runReportFilter();
+	});
+	$("#filter_severity_error").change(function() {
+		filter["severity"]["error"] = !filter["severity"]["error"];
+		runReportFilter();
+	});
+	$("#filter_resource_type").change(function() {
+		filter["resource_type"] = $(this).children("option:selected").val();
+		runReportFilter();
+	});
+	$("#filter_search_alt").on('input', function() {
+		filter["search"]["alt"] = $(this).val();
+		runReportFilter();
+	});
+	
+	
+	runReportFilter();
 });

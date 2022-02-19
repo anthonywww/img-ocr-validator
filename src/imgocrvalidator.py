@@ -62,10 +62,6 @@ class ImgOCRValidator():
 			original_template = fp.read()
 			fp.close()
 			
-			fp = open("src/script.js", 'r')
-			script = fp.read()
-			fp.close()
-			
 			# Create reports/ directory
 			if not os.path.isdir("reports"):
 				os.mkdir("reports")
@@ -79,19 +75,23 @@ class ImgOCRValidator():
 					report_name = report_name[:-1]
 				
 				template = original_template
-				template = template.replace("{json_data}", json.dumps(results[result]["images"], indent=None, separators=(",", ":")))
-				template = template.replace("{json_data_pretty}", json.dumps(results[result]["images"], indent=4))
+				template = template.replace("{url}", result)
 				template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
-				
-				script = script.replace("{json_data}", json.dumps(results[result]["images"], indent=None, separators=(",", ":")))
 				
 				fp = open(f"reports/{report_name}.html", 'w')
 				fp.write(template)
 				fp.close()
+			
+			
+			fp = open("src/script.js", 'r')
+			script = fp.read()
+			fp.close()
+			
+			script = script.replace("{json_data}", json.dumps(results, indent=None, separators=(",", ":")))
 				
-				fp = open("reports/script.js", 'w')
-				fp.write(script);
-				fp.close()
+			fp = open("reports/script.js", 'w')
+			fp.write(script);
+			fp.close()
 			
 		except Exception as err:
 			self.log(f"Error while trying to read template html file: {err}")
@@ -165,6 +165,12 @@ class ImgOCRValidator():
 
 
 	def parse(self, urls: str, options: dict):
+		
+		headers = {
+			"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0"
+		}
+		
+		
 		# Print URLs provided
 		self.log("URLS = %s" %(urls))
 		
@@ -178,7 +184,7 @@ class ImgOCRValidator():
 				# Fetch HTML
 				self.log(f"[{url}] Fetching source ...")
 				start_time = time.process_time()
-				response = requests.get(url)
+				response = requests.get(url, headers=headers)
 				response.raise_for_status()
 				end_time = time.process_time()
 				fetch_time = end_time - start_time
@@ -291,7 +297,7 @@ class ImgOCRValidator():
 					self.log(f"[{url}] - Validating source {src} ...")
 					try:
 						start_time = time.process_time()
-						response = requests.get(src, stream=True, timeout=30)
+						response = requests.get(src, stream=True, timeout=30, headers=headers)
 						response.raise_for_status()
 						end_time = time.process_time()
 						fetch_time = end_time - start_time
