@@ -313,8 +313,8 @@ document.addEventListener("DOMContentLoaded", function() {
 	// Set relevant report
 	json_report = full_report[$("#url_resource_id").val()]["resources"];
 	
-	// Set relative time hover, updated every 30 seconds
-	setInterval(updateTimestamps, 1000 * 30);
+	// Set relative time hover, updated every second
+	setInterval(updateTimestamps, 1000);
 	updateTimestamps();
 
 	// Dark mode options
