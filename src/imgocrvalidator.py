@@ -28,10 +28,7 @@ class ImgOCRValidator():
 				fp = open("report.json", 'r')
 				json_report = json.loads(fp.read())
 				fp.close()
-				if options["legacy_report"]:
-					self.generate_legacy_report(json_report)
-				else:
-					self.generate_report(json_report)
+				self.generate_report(json_report)
 			except Exception as err:
 				self.log(f"Error while trying to read report.json file: {err}")
 			return
@@ -49,10 +46,7 @@ class ImgOCRValidator():
 		self.parse(urls, options)
 		
 		if options["generate_report"]:
-			if options["legacy_report"]:
-				self.generate_legacy_report(self.results)
-			else:
-				self.generate_report(self.results)
+			self.generate_report(self.results)
 
 	def generate_report(self, results):
 		self.log(f"Saving html report ...")
@@ -95,75 +89,8 @@ class ImgOCRValidator():
 			
 		except Exception as err:
 			self.log(f"Error while trying to read template html file: {err}")
-		
-
-	def generate_legacy_report(self, results):
-		import json2html
-		
-		self.log(f"Saving legacy html report ...")
-		
-		try:
-			fp = open("src/_header.html", 'r')
-			original_header = fp.read()
-			fp.close()
-			
-			fp = open("src/_footer.html", 'r')
-			original_footer = fp.read()
-			fp.close()
-			
-			# Create reports/ directory
-			if not os.path.isdir("reports"):
-				os.mkdir("reports")
-			
-			for result in results:
-				report = json2html.json2html.convert(json=results[result]["images"])
-				
-				image_count_no_issues = 0
-				image_count_info_issues = 0
-				image_count_warn_issues = 0
-				image_count_error_issues = 0
-				
-				for img in results[result]["images"]:
-					if len(img["issues"]) == 0:
-						image_count_no_issues = image_count_no_issues + 1
-					else:
-						for issues in img["issues"]:
-							if issues["severity"] == "info":
-								image_count_info_issues = image_count_info_issues + 1
-							elif issues["severity"] == "warn":
-								image_count_warn_issues = image_count_warn_issues + 1
-							elif issues["severity"] == "error":
-								image_count_error_issues = image_count_error_issues + 1
-				
-				# Replace template holders
-				header = original_header
-				footer = original_footer
-				
-				header = header.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
-				footer = footer.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
-				
-				header = header.replace("{total_images}", str(len(results[result]["images"])))
-				header = header.replace("{severity_none}", str(image_count_no_issues))
-				header = header.replace("{severity_info}", str(image_count_info_issues))
-				header = header.replace("{severity_warn}", str(image_count_warn_issues))
-				header = header.replace("{severity_error}", str(image_count_error_issues))
-				
-				if report.endswith("/"):
-					report = report[:-1]
-				
-				report_name = result.replace("https://", "").replace("http://", "").replace("/", "_").replace("+", "_")
-				report_name = re.sub(r"[^a-zA-Z0-9-_. ]", "", report_name)
-				
-				fp = open(f"reports/{report_name}.html", 'w')
-				fp.write(header)
-				fp.write(report)
-				fp.write(footer)
-				fp.close()
-				
-		except Exception as err:
-			self.log(f"Error while trying to read legacy template html files: {err}")
-
-
+	
+	
 	def parse(self, urls: str, options: dict):
 		
 		headers = {
@@ -431,16 +358,14 @@ def parse_cli_args():
 	parser.add_argument("urls", metavar="URL", type=str, nargs="*", help="URLs to analyze.")
 	parser.add_argument("-g", "--generate-report", action="store_true", help="Generate HTML reports.")
 	parser.add_argument("-p", "--parse-only", action="store_true", help="Generate HTML reports from existing report.json.")
-	parser.add_argument("-k", "--legacy-report", action="store_true", help="Use the legacy HTML reporter.")
 	parser.add_argument("-s", "--severity", type=str, help=f"Only include <SEVERITY> or greater in the report. (Valid severities: {severities_string})")
 	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors. (Separated by , (commas))")
-	parser.add_argument("--allow-duplicates", action="store_true", help="Ignore duplicate resource id's")
+	parser.add_argument("--allow-duplicates", action="store_true", help="Ignore duplicate resource id's (may cause unexpected results!)")
 	
 	args = parser.parse_args()
 	
 	generate_report = args.generate_report or False
 	parse_only = args.parse_only or False
-	legacy_report = args.legacy_report or False
 	severity = args.severity or False
 	exclude = args.exclude or False
 	allow_duplicates = args.allow_duplicates or False
@@ -456,7 +381,6 @@ def parse_cli_args():
 	options = {}
 	options["generate_report"] = generate_report
 	options["parse_only"] = parse_only
-	options["legacy_report"] = legacy_report
 	options["severity"] = severity
 	options["exclude"] = exclude
 	options["allow_duplicates"] = allow_duplicates
