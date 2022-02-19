@@ -72,7 +72,8 @@ class ImgOCRValidator():
 				template = original_template
 				template = template.replace("{url}", results[result]["url"])
 				template = template.replace("{url_resource_id}", result)
-				template = template.replace("{date_generated}", time.strftime("%m-%d-%Y %H:%M:%S"))
+				template = template.replace("{date_generated}", str(int(time.time())))
+				template = template.replace("{date_generated_pretty}", time.strftime("%B %d, %Y %H:%M:%S"))
 				
 				fp = open(f"reports/{report_name}.html", 'w')
 				fp.write(template)

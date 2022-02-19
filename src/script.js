@@ -295,9 +295,11 @@ function timeDifference(current, previous) {
 
 function updateTimestamps() {
 	$("time.timestamp").each(function() {
-		let created = new Date(Date.parse($(this).attr("datetime")));
-		let now = new Date();
-		let diff = timeDifference(created, now);
+		let previous_string = parseInt(($(this).attr("datetime")));
+		
+		let previous = new Date(previous_string * 1000);
+		let current = new Date();
+		let diff = timeDifference(current, previous);
 		
 		$(this).attr("title", diff);
 	});

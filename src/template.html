@@ -65,7 +65,7 @@
 			</div>
 			<div class="content">
 				<p>
-					This report has been generated on <time class="timestamp" datetime="{date_generated}">{date_generated}</time> for <a href="{url}" target="_blank">{url}</a> using OCR (Optical Character Recognition) algorithms and basic HTML &lt;img&gt; element checks.
+					This report has been generated on <time class="timestamp" datetime="{date_generated}">{date_generated_pretty}</time> for <a href="{url}" target="_blank">{url}</a> using OCR (Optical Character Recognition) algorithms and basic HTML &lt;img&gt; element checks.
 					<input type="hidden" id="url_resource_id" name="url_resource_id" value="{url_resource_id}">
 				</p>
 				<p>
@@ -88,7 +88,7 @@
 								<div class="control">
 									<label for="filter_severity_none" class="checkbox">
 										<input type="checkbox" id="filter_severity_none" name="filter_severity_none" value="1" checked>
-										<span class="tag is-dark">NONE</span>
+										<span class="tag is-success">NONE</span>
 									</label>
 								
 									<label for="filter_severity_info" class="checkbox">
@@ -184,7 +184,8 @@
 		<br>
 		<div id="bottom" class="container">
 			<div class="footer">
-				<p>This report was generated on <time class="timestamp" datetime="{date_generated}">{date_generated}</time> using <a href="https://github.com/hashsploit/img-ocr-validator">img-ocr-validator</a>.</p>
+				<p>This report was generated on <time class="timestamp" datetime="{date_generated}">{date_generated_pretty}</time> using <a href="https://github.com/hashsploit/img-ocr-validator">img-ocr-validator</a>.</p>
+				<p>URL Resource Id: <code>{url_resource_id}</code>.</p>
 			</div>
 		</div>
 		<div id="floating_tools">
