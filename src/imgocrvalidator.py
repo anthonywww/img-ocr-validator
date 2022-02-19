@@ -94,9 +94,8 @@ class ImgOCRValidator():
 	def parse(self, urls: str, options: dict):
 		
 		headers = {
-			"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0"
+			"User-Agent": "Mozilla/5.0 (compatible; ImgOcrValidatorBot/1.0)"
 		}
-		
 		
 		# Print URLs provided
 		self.log("URLS = %s" %(urls))
