@@ -35,7 +35,7 @@ function renderReport(data) {
 		// Mandatory
 		var object = data[i];
 		var url = object["url"];
-		var alt = object["alt"];
+		var alt = object["alt"] || "";
 		var issues = object["issues"];
 		var download_time = object["download_time"];
 		var content_type = object["content_type"];
@@ -129,7 +129,6 @@ function renderReport(data) {
 				</table>
 			`;
 		}
-		
 		
 		let body = `
 			<div class="columns">

@@ -219,10 +219,15 @@ class ImgOCRValidator():
 						self.log(f"[{url}] - Invalid URL for {src}")
 						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="error", text="Invalid URL provided in src attribute."))
 
+					# Check if missing <img alt> alt attribute
+					if alt == None:
+						self.log(f"[{url}] - Missing alt attribute for {src}")
+						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="error", text="Alt attribute is missing."))
 					# Check if empty <img alt=""> alt attribute
-					if not alt or len(alt.strip()) == 0:
+					elif len(alt.strip()) == 0:
 						self.log(f"[{url}] - Empty alt attribute for {src}")
 						self.results[url_resource_id]["resources"][index]["issues"].append(dict(severity="warn", text="Alt attribute is empty."))
+
 
 					# Set the URL again after filtering
 					self.results[url_resource_id]["resources"][index]["url"] = src
