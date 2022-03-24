@@ -22,7 +22,7 @@ docker run --rm -it --user $(id -u):$(id -g) -v "$(pwd):/root/" -e ARGS="-g http
 
 ### Options
 ```
-usage: img-ocr-validator [-h] [-g] [-p] [-s SEVERITY] [--exclude EXCLUDE] [--allow-duplicates] [URL ...]
+usage: img-ocr-validator [-h] [-g] [-p] [-s SEVERITY] [--exclude EXCLUDE] [--allow-duplicates] [-c COOKIES] [URL ...]
 
 Launch flags for img-ocr-validator.
 
@@ -38,4 +38,6 @@ options:
                         Only include <SEVERITY> or greater in the report. (Valid severities: NONE, INFO, WARN, ERROR)
   --exclude EXCLUDE     Exclude the presented css selectors. (Separated by , (commas))
   --allow-duplicates    Ignore duplicate resource id's (may cause unexpected results!)
+  -c COOKIES, --cookies COOKIES
+                        Set cookies to a Netscape HTTP Cookie File
 ```

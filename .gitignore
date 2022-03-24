@@ -2,6 +2,8 @@
 report.json
 report.html
 reports/
+cookies.txt
+cookie.txt
 .config/
 .ash_history
 .python_history

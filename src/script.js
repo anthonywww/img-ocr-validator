@@ -320,21 +320,9 @@ document.addEventListener("DOMContentLoaded", function() {
 	$("#dark_mode").click(function() {
 		dark_mode = !dark_mode;
 		if (dark_mode) {
-			$("html").addClass("dark-mode");
-			$("body").addClass("dark-mode");
-			$("h1,h2,h3,h4,h5,h6").addClass("dark-mode");
-			$(".footer").addClass("dark-mode");
-			
-			$("#dark_mode").children().addClass("fa-sun");
-			$("#dark_mode").children().removeClass("fa-moon");
+			$("#dark_mode_css").attr("media", "all");
 		} else {
-			$("html").removeClass("dark-mode");
-			$("body").removeClass("dark-mode");
-			$("h1,h2,h3,h4,h5,h6").removeClass("dark-mode");
-			$(".footer").removeClass("dark-mode");
-			
-			$("#dark_mode").children().addClass("fa-moon");
-			$("#dark_mode").children().removeClass("fa-sun");
+			$("#dark_mode_css").attr("media", "print");
 		}
 	});
 	

@@ -15,6 +15,7 @@ from urllib.error import *
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from PIL import Image
+from http.cookiejar import MozillaCookieJar
 
 from severity import Severity
 
@@ -95,13 +96,29 @@ class ImgOCRValidator():
 	
 	
 	def parse(self, urls: str, options: dict):
+	
+		# Print URLs provided
+		self.log("URLS = %s" %(urls))
 		
 		headers = {
 			"User-Agent": "Mozilla/5.0 (compatible; ImgOcrValidatorBot/1.0)"
 		}
 		
-		# Print URLs provided
-		self.log("URLS = %s" %(urls))
+		# If cookies is set
+		cj = None
+		
+		if options["cookies"]:
+			cj = MozillaCookieJar(str(options["cookies"]).strip())
+			if os.path.exists(options["cookies"]):
+				cj.load(ignore_discard=True, ignore_expires=True)
+				for cookie in cj:
+					# Set cookie expire date to 14 days from now
+					cookie.expires = time.time() + 14 * 24 * 3600
+					self.log(f"Cookie: {cookie.name} = {cookie.value}")
+		
+		
+		session = requests.Session()
+		session.cookies = cj
 		
 		# For each of the URLs provided open 
 		for url in urls:
@@ -118,7 +135,7 @@ class ImgOCRValidator():
 				# Fetch HTML
 				self.log(f"[{url}] URL Resource Id: {url_resource_id} Fetching source ...")
 				start_time = time.process_time()
-				response = requests.get(url, headers=headers)
+				response = session.get(url, headers=headers)
 				response.raise_for_status()
 				end_time = time.process_time()
 				fetch_time = end_time - start_time
@@ -236,7 +253,7 @@ class ImgOCRValidator():
 					self.log(f"[{url}] - Validating source {src} ...")
 					try:
 						start_time = time.process_time()
-						response = requests.get(src, stream=True, timeout=30, headers=headers)
+						response = session.get(src, stream=True, timeout=30, headers=headers)
 						response.raise_for_status()
 						end_time = time.process_time()
 						fetch_time = end_time - start_time
@@ -378,6 +395,7 @@ def parse_cli_args():
 	parser.add_argument("-s", "--severity", type=str, help=f"Only include <SEVERITY> or greater in the report. (Valid severities: {severities_string})")
 	parser.add_argument("--exclude", type=str, help="Exclude the presented css selectors. (Separated by , (commas))")
 	parser.add_argument("--allow-duplicates", action="store_true", help="Ignore duplicate resource id's (may cause unexpected results!)")
+	parser.add_argument("-c", "--cookies", type=str, help="Set cookies to a Netscape HTTP Cookie File")
 	
 	args = parser.parse_args()
 	
@@ -386,6 +404,7 @@ def parse_cli_args():
 	severity = args.severity or False
 	exclude = args.exclude or False
 	allow_duplicates = args.allow_duplicates or False
+	cookies = args.cookies or False
 	
 	if not severity == False and (not severity == "NONE" and not severity == "INFO" and not severity == "WARN" and not severity == "ERROR"):
 		print(f"Error: Severity must be {severities_string}")
@@ -401,6 +420,7 @@ def parse_cli_args():
 	options["severity"] = severity
 	options["exclude"] = exclude
 	options["allow_duplicates"] = allow_duplicates
+	options["cookies"] = cookies
 	
 	ImgOCRValidator(args.urls, options)
 
