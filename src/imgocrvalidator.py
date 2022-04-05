@@ -118,7 +118,9 @@ class ImgOCRValidator():
 		
 		
 		session = requests.Session()
-		session.cookies = cj
+		
+		if options["cookies"]:
+			session.cookies = cj
 		
 		# For each of the URLs provided open 
 		for url in urls:
